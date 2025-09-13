@@ -1,0 +1,19 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@lib/*": [
+        "./lib/*",
+      ],
+      "~/*": [
+        "./src/*",
+      ]
+    },
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+  }
+}
