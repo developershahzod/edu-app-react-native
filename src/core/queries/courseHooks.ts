@@ -500,6 +500,35 @@ export const useGetCourseGuide = (courseId: number | string) => {
   });
 };
 
+/**
+ * Upload assignment submission with files
+ */
+export const useUploadAssignmentSubmissionWithFiles = (assignmentId: string | number) => {
+  const client = useQueryClient();
+  const coursesClient = useCoursesClient();
+
+  return useMutation({
+    mutationFn: async (dto: { files: File[]; description?: string }) => {
+      const form = new FormData();
+      dto.files.forEach((file, index) => {
+        form.append('files', file);
+      });
+      if (dto.description) {
+        form.append('description', dto.description);
+      }
+      await coursesClient.uploadAssignmentSubmissionWithFiles({
+        assignmentId,
+        formData: form,
+      });
+    },
+    onSuccess() {
+      return client.invalidateQueries({
+        queryKey: getCourseKey(assignmentId, CourseSectionEnum.Assignments),
+      });
+    },
+  });
+};
+
 export const useGetCourseNotices = (courseId: number | string) => {
   const { token } = useApiContext();
 

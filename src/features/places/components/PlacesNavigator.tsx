@@ -143,7 +143,7 @@ export const PlacesNavigator = () => {
 
   return (
    <View style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-    <Text style={{ textAlign: 'center' }}>Coming Soon...</Text>
+    <Text style={{ textAlign: 'center', fontSize: 26, fontWeight: 'bold' }}>Coming Soon...</Text>
   </View>
   );
 };

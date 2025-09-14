@@ -48,6 +48,16 @@ export class CoursesApi extends BaseAPI {
     );
   }
 
+  async uploadAssignmentSubmissionWithFiles(params: { assignmentId: string | number; formData: FormData }): Promise<void> {
+    return this.request<void>(`/assignments/${params.assignmentId}/submissions/with-files`, {
+      method: 'POST',
+      body: params.formData,
+      headers: {
+        // Let the browser set Content-Type with boundary for multipart/form-data
+      },
+    } as any);
+  }
+
   async getCourseGuide(params: { courseId: string | number }): Promise<ApiResponse<any[]>> {
     return this.request<ApiResponse<any[]>>(`/courses/${params.courseId}/guide`);
   }

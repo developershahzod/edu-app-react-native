@@ -179,8 +179,8 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
           />
           <OverviewList>
             <ListItem
-              title={student?.degreeName ?? ''}
-              subtitle={student?.degreeLevel + ' - ' + enrollmentYear}
+              title={student?.firstName + ' ' + student?.lastName}
+         
               linkTo={{
                 screen: 'Degree',
                 params: {

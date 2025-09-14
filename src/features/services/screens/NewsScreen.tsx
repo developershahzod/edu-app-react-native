@@ -5,26 +5,26 @@ import { RefreshControl } from '@lib/ui/components/RefreshControl';
 import { Section } from '@lib/ui/components/Section';
 
 import { BottomBarSpacer } from '../../../core/components/BottomBarSpacer';
-import { useGetNews } from '../../../core/queries/newsHooks';
-import { NewsListItem } from '../components/NewsListItem';
+import { useGetMyEvents } from '../../../core/queries/calendarHooks';
+import { NewsEventListItem } from '../components/NewsEventListItem';
 
 export const NewsScreen = () => {
-  const newsQuery = useGetNews();
+  const eventsQuery = useGetMyEvents();
 
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      refreshControl={<RefreshControl queries={[newsQuery]} manual />}
+      refreshControl={<RefreshControl queries={[eventsQuery]} manual />}
     >
       <SafeAreaView>
         <Section>
-          <OverviewList loading={newsQuery.isLoading}>
-            {newsQuery?.data?.map((newsItem, index) => (
-              <NewsListItem
-                newsItem={newsItem}
-                key={newsItem.id}
+          <OverviewList loading={eventsQuery.isLoading}>
+            {eventsQuery?.data?.map((eventItem, index) => (
+              <NewsEventListItem
+                event={eventItem}
+                key={eventItem.id}
                 index={index}
-                totalData={newsQuery?.data?.length || 0}
+                totalData={eventsQuery?.data?.length || 0}
               />
             ))}
           </OverviewList>
