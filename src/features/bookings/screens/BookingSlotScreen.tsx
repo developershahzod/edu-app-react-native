@@ -23,7 +23,7 @@ import { faSeat } from '@lib/ui/icons/faSeat';
 import { WeekNum } from '@lib/ui/types/Calendar';
 import { Theme } from '@lib/ui/types/Theme';
 import { CALENDAR_CELL_HEIGHT } from '@lib/ui/utils/calendar';
-import { BookingSlot } from '../../../../src/lib/api-client';
+import { BookingSlot } from '../../lib/api-client';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { DateTime, IANAZone } from 'luxon';

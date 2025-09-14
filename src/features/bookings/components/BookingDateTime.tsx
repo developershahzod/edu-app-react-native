@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { ScreenDateTime } from '@lib/ui/components/ScreenDateTime';
-import { Booking } from '../../../../src/lib/api-client';
+import { Booking } from '../../lib/api-client';
 
 import { dateFormatter, formatReadableDate } from '../../../utils/dates';
 

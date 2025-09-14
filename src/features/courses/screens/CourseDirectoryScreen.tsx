@@ -13,7 +13,7 @@ import { Text } from '@lib/ui/components/Text';
 import { TranslucentTextField } from '@lib/ui/components/TranslucentTextField';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { Theme } from '@lib/ui/types/Theme';
-import { CourseDirectory, CourseFileOverview } from '../../../../src/lib/api-client';
+import { CourseDirectory, CourseFileOverview } from '../../lib/api-client';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 

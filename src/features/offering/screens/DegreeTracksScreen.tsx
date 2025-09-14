@@ -12,7 +12,7 @@ import { SectionHeader } from '@lib/ui/components/SectionHeader';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { useTheme } from '@lib/ui/hooks/useTheme';
 import { Theme } from '@lib/ui/types/Theme';
-import { OfferingCourseOverview } from '../../../../src/lib/api-client/OfferingCourseOverview';
+import { OfferingCourseOverview } from '../../lib/api-client/OfferingCourseOverview';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 import { useGetOfferingDegree } from '../../../core/queries/offeringHooks';

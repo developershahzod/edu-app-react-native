@@ -14,10 +14,10 @@ import { FileListItem } from '@lib/ui/components/FileListItem';
 import { IconButton } from '@lib/ui/components/IconButton';
 import { ListItemProps } from '@lib/ui/components/ListItem';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { BASE_PATH, CourseFileOverview } from '../../../../src/lib/api-client';
+import { BASE_PATH, CourseFileOverview } from '../../../lib/api-client';
 import { useNavigation } from '@react-navigation/native';
 
-import { useFeedbackContext } from '../../../../src/core/contexts/FeedbackContext';
+import { useFeedbackContext } from '../../../core/contexts/FeedbackContext';
 import { IS_ANDROID, IS_IOS } from '../../../core/constants';
 import { useDownloadCourseFile } from '../../../core/hooks/useDownloadCourseFile';
 import { useNotifications } from '../../../core/hooks/useNotifications';
@@ -127,6 +127,21 @@ export const CourseFileListItem = memo(
         .join('/');
     }, [courseFilesCache, item]);
 
+    // Normalize file meta fields across API variants
+    const sizeInKiloBytes = useMemo(() => {
+      const sIKB = (item as any).sizeInKiloBytes;
+      if (typeof sIKB === 'number') return sIKB;
+      if (typeof item.size === 'number') return item.size / 1024;
+      return undefined;
+    }, [item]);
+
+    const createdAtDate = useMemo(() => {
+      const c = (item as any).createdAt;
+      if (c instanceof Date) return c;
+      // uploadDate is ISO string in new API
+      if ((item as any).uploadDate) return new Date((item as any).uploadDate as string);
+      return undefined;
+    }, [item]);
     const {
       isDownloaded,
       downloadProgress,
@@ -145,25 +160,25 @@ export const CourseFileListItem = memo(
         }
         const fileStats = await stat(cachedFilePath);
         setIsCorrupted(
-          Math.abs(fileStats.size - item.sizeInKiloBytes * 1024) /
-            Math.max(fileStats.size, item.sizeInKiloBytes * 1024) >
-            0.1,
+          sizeInKiloBytes
+            ? Math.abs(fileStats.size - sizeInKiloBytes * 1024) /
+                Math.max(fileStats.size, sizeInKiloBytes * 1024) >
+              0.1
+            : false,
         );
       })();
-    }, [cachedFilePath, isDownloaded, item.sizeInKiloBytes]);
+    }, [cachedFilePath, isDownloaded, sizeInKiloBytes]);
 
     const metrics = useMemo(
       () =>
         [
-          showCreatedDate && item.createdAt && formatDateTime(item.createdAt),
-          showSize &&
-            item.sizeInKiloBytes &&
-            formatFileSize(item.sizeInKiloBytes),
+          showCreatedDate && createdAtDate && formatDateTime(createdAtDate),
+          showSize && sizeInKiloBytes && formatFileSize(sizeInKiloBytes),
           showLocation && item.location,
         ]
           .filter(i => !!i)
           .join(' - '),
-      [showCreatedDate, item, showSize, showLocation],
+      [showCreatedDate, createdAtDate, showSize, sizeInKiloBytes, showLocation, item.location],
     );
 
     const openDownloadedFile = useCallback(async () => {

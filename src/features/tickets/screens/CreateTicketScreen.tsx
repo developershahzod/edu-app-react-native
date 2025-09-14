@@ -14,7 +14,7 @@ import { TextField } from '@lib/ui/components/TextField';
 import { ThemeContext } from '@lib/ui/contexts/ThemeContext';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { Theme } from '@lib/ui/types/Theme';
-import { CreateTicketRequest } from '../../../../src/lib/api-client';
+import { CreateTicketRequest } from '../../lib/api-client';
 import { MenuAction } from '@react-native-menu/menu';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 

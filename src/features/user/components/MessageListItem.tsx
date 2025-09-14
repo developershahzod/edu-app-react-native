@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { ListItem } from '@lib/ui/components/ListItem';
-import { Message } from '../../../../src/lib/api-client';
+import { Message } from '../../lib/api-client';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 

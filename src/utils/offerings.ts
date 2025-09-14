@@ -1,5 +1,5 @@
-import { Track } from '../../../../src/lib/api-client';
-import { OfferingCourseOverview } from '../../../../src/lib/api-client/OfferingCourseOverview';
+import { Track } from '../../lib/api-client';
+import { OfferingCourseOverview } from '../../lib/api-client/OfferingCourseOverview';
 
 import { groupBy, map } from 'lodash';
 

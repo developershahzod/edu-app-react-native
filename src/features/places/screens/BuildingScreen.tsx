@@ -20,7 +20,7 @@ import { Text } from '@lib/ui/components/Text';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { useTheme } from '@lib/ui/hooks/useTheme';
 import { Theme } from '@lib/ui/types/Theme';
-import { ResponseError } from '../../../../src/lib/api-client';
+import { ResponseError } from '../../lib/api-client';
 import { useHeaderHeight } from '@react-navigation/elements';
 import {
   CameraBounds,

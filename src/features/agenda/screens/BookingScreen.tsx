@@ -27,7 +27,7 @@ import { useTheme } from '@lib/ui/hooks/useTheme';
 import { faSeat } from '@lib/ui/icons/faSeat';
 import { Theme } from '@lib/ui/types/Theme';
 import { isToday } from '@lib/ui/utils/calendar';
-import { Booking } from '../../../../src/lib/api-client';
+import { Booking } from '../../lib/api-client';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { inRange } from 'lodash';

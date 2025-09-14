@@ -5,7 +5,7 @@ import { open } from 'react-native-file-viewer';
 import { ThemeContext } from '@lib/ui/contexts/ThemeContext';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { Theme } from '@lib/ui/types/Theme';
-import { TicketAttachment } from '../../../../src/lib/api-client/TicketAttachment';
+import { TicketAttachment } from '../../lib/api-client/TicketAttachment';
 
 import {
   useGetTicketAttachment,

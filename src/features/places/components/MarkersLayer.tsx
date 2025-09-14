@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { PlaceOverview } from '../../../../src/lib/api-client';
-import { PlaceCategory } from '../../../../src/lib/api-client';
+import { PlaceOverview } from '../../lib/api-client';
+import { PlaceCategory } from '../../lib/api-client';
 import { useNavigation } from '@react-navigation/native';
 import { ShapeSource, SymbolLayer } from '@rnmapbox/maps';
 

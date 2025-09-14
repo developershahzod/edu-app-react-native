@@ -1,4 +1,5 @@
 import { BASE_API_URL } from './models';
+export const BASE_PATH = BASE_API_URL;
 
 export interface Configuration {
   basePath?: string;
@@ -7,6 +8,16 @@ export interface Configuration {
   username?: string;
   password?: string;
   headers?: Record<string, string>;
+}
+
+/**
+ * Extended Request options supported by our BaseAPI
+ * - query: will be appended as query string
+ * - body: accept any object; it will be passed through as-is. Upstream code decides if JSON.stringify is needed.
+ */
+export interface RequestOptions extends Omit<RequestInit, 'body'> {
+  query?: Record<string, any>;
+  body?: any;
 }
 
 export class ResponseError extends Error {
@@ -25,37 +36,53 @@ export class BaseAPI {
   protected configuration: Configuration;
 
   constructor(configuration: Configuration = {}) {
+    // Merge provided configuration with global configuration and sensible defaults
+    const global = getGlobalConfiguration();
     this.configuration = {
-      basePath: BASE_API_URL,
-      ...configuration,
+      basePath: configuration.basePath ?? global.basePath ?? BASE_API_URL,
+      accessToken: configuration.accessToken ?? global.accessToken,
+      apiKey: configuration.apiKey ?? global.apiKey,
+      username: configuration.username ?? global.username,
+      password: configuration.password ?? global.password,
+      headers: {
+        ...(global.headers || {}),
+        ...(configuration.headers || {}),
+      },
     };
   }
 
   protected async request<T>(
     path: string,
-    init: RequestInit = {}
+    init: RequestOptions = {}
   ): Promise<T> {
-    const url = `${this.configuration.basePath}${path}`;
+    // Support query params passed via init.query
+    const { query, ...restInit } = init || {};
+    const queryString =
+      query && Object.keys(query).length ? this.buildQueryString(query) : '';
 
-    
+    const effectiveBasePath =
+      this.configuration.basePath ?? getGlobalConfiguration().basePath ?? BASE_API_URL;
+
+    const url = `${effectiveBasePath}${path}${queryString}`;
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTc2NzM2MzAsInN1YiI6Ijc3ODVlOTZlLTM4ZDEtNGM5Mi1iMTJhLTc3MDE0Y2FlNjUwNyIsInR5cGUiOiJhY2Nlc3MifQ.b47Y9ZBmvpY-NN9LBFJSIPHJ6VEsfpqfHZzhmNTChNA',
+      ...(getGlobalConfiguration().headers || {}),
       ...(this.configuration.headers || {}),
-      ...(init.headers as Record<string, string> || {}),
+      ...(((restInit?.headers as Record<string, string>) || {}) as Record<string, string>),
     };
 
-    // Add authorization header if access token is available
-
-    if (this.configuration.accessToken) {
-      const token = typeof this.configuration.accessToken === 'function' 
-        ? this.configuration.accessToken() 
-        : this.configuration.accessToken;
+    // Add authorization header if access token is available (global or instance)
+    const configuredToken =
+      this.configuration.accessToken ?? getGlobalConfiguration().accessToken;
+    if (configuredToken) {
+      const token =
+        typeof configuredToken === 'function' ? configuredToken() : configuredToken;
       headers['Authorization'] = `Bearer ${token}`;
     }
 
     const requestInit: RequestInit = {
-      ...init,
+      ...(restInit as RequestInit),
       headers,
     };
 
@@ -95,23 +122,27 @@ export class BaseAPI {
   protected async requestFormData<T>(
     path: string,
     formData: FormData,
-    init: RequestInit = {}
+    init: RequestOptions = {}
   ): Promise<T> {
-    const url = `${this.configuration.basePath}${path}`;
-    
+    const effectiveBasePath =
+      this.configuration.basePath ?? getGlobalConfiguration().basePath ?? BASE_API_URL;
+    const url = `${effectiveBasePath}${path}`;
+
     const headers: Record<string, string> = {
-      ...this.configuration.headers,
-      ...init.headers,
+      ...(getGlobalConfiguration().headers || {}),
+      ...(this.configuration.headers || {}),
+      ...((init.headers as Record<string, string>) || {}),
     };
 
     // Don't set Content-Type for FormData, let the browser set it with boundary
     delete headers['Content-Type'];
 
-    // Add authorization header if access token is available
-    if (this.configuration.accessToken) {
-      const token = typeof this.configuration.accessToken === 'function' 
-        ? this.configuration.accessToken() 
-        : this.configuration.accessToken;
+    // Add authorization header if access token is available (global or instance)
+    const configuredToken =
+      this.configuration.accessToken ?? getGlobalConfiguration().accessToken;
+    if (configuredToken) {
+      const token =
+        typeof configuredToken === 'function' ? configuredToken() : configuredToken;
       headers['Authorization'] = `Bearer ${token}`;
     }
 
@@ -171,14 +202,6 @@ export class BaseAPI {
     return queryString ? `?${queryString}` : '';
   }
 
-  request<T>(url: string, options: RequestInit = {}): Promise<T> {
-    const headers = options.headers || {};
-    if (this.configuration.accessToken) {
-      headers['Authorization'] = `Bearer ${this.configuration.accessToken}`;
-    }
-    options.headers = headers;
-    return this.request<T>(url, options);
-  }
 }
 
 // Global configuration instance
@@ -190,6 +213,16 @@ export function setGlobalConfiguration(config: Configuration) {
 
 export function getGlobalConfiguration(): Configuration {
   return globalConfiguration;
+}
+
+// Augment RequestInit so API classes can pass query/body without TS errors
+declare global {
+  interface RequestInit {
+    // appended as query string by BaseAPI
+    query?: Record<string, any>;
+    // allow plain objects; BaseAPI forwards as-is
+    body?: any;
+  }
 }
 
 // Helper function to create API instances with global configuration

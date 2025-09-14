@@ -1,5 +1,5 @@
-import { VideoLecture } from '../../../../src/lib/api-client';
-import { GetCourseVirtualClassrooms200ResponseDataInner } from '../../../../src/lib/api-client/GetCourseVirtualClassrooms200ResponseDataInner';
+import { VideoLecture } from '../../lib/api-client';
+import { GetCourseVirtualClassrooms200ResponseDataInner } from '../../lib/api-client/GetCourseVirtualClassrooms200ResponseDataInner';
 
 export type CourseLecture =
   | GetCourseVirtualClassrooms200ResponseDataInner

@@ -2,7 +2,7 @@ import {
   DegreeOverview,
   GetOffering200ResponseData,
   Student,
-} from '../../../../src/lib/api-client';
+} from '../../lib/api-client';
 
 export const getStudentEnrollmentYear = (student?: Student) => {
   if (!student) return '...';

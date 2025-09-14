@@ -9,9 +9,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { Badge } from '@lib/ui/components/Badge';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { ExamStatusEnum } from '../../../../src/lib/api-client';
+import { ExamStatusEnum } from '../../../lib/api-client';
 
-import { usePreferencesContext } from '../../../../src/core/contexts/PreferencesContext';
+import { usePreferencesContext } from '../../../core/contexts/PreferencesContext';
 import { lightTheme } from '../../../core/themes/light';
 import { Exam } from '../../../core/types/api';
 
@@ -25,15 +25,18 @@ export const ExamStatusBadge = ({ exam, textOnly }: Props) => {
   const { dark, palettes } = useTheme();
   const { accessibility } = usePreferencesContext();
   const statusIcon = useMemo(() => {
-    switch (exam.status) {
-      case ExamStatusEnum.Booked:
-      case ExamStatusEnum.RequestAccepted:
+    const status = String(exam.status).toLowerCase();
+    switch (status) {
+      case 'registered':
+      case 'booked':
+      case 'requestaccepted':
         return faCircleCheck;
-      case ExamStatusEnum.Requested:
+      case 'requested':
         return faSpinner;
-      case ExamStatusEnum.RequestRejected:
+      case 'requestrejected':
         return faCircleXmark;
-      case ExamStatusEnum.Unavailable:
+      case 'unavailable':
+      case 'withdrawn':
         return faCircleMinus;
       default:
         return faCircle;

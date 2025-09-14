@@ -870,7 +870,12 @@ export function userToStudent(user: User): Student {
     status: user.is_active ? 'active' : 'inactive',
     isCurrentlyEnrolled: user.is_active,
     totalCredits: 0,
-    totalAttendedCredits: 0
+    totalAttendedCredits: 0,
+    // Ensure ESC object exists to avoid runtime crashes when reading canBeRequested
+    europeanStudentCard: {
+      canBeRequested: false,
+      details: undefined,
+    },
   };
 }
 

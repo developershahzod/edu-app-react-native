@@ -19,14 +19,15 @@ export const CourseIcon = ({ color, icon, isHidden }: Props) => {
   const styles = useStylesheet(createStyles);
 
   // Generate a random color in hex format
-  const randomColor = useMemo(() => {
-    const letters = '0123456789ABCDEF';
-    let col = '#';
-    for (let i = 0; i < 6; i++) {
-      col += letters[Math.floor(Math.random() * 16)];
-    }
-    return col;
-  }, []);
+ const randomColor = useMemo(() => {
+  const letters = '89ABCDEF'; // use only brighter hex digits
+  let col = '#';
+  for (let i = 0; i < 6; i++) {
+    col += letters[Math.floor(Math.random() * letters.length)];
+  }
+  return col;
+}, []);
+
 
   const backgroundColor =randomColor;
 

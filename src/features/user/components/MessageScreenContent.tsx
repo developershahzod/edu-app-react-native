@@ -8,7 +8,7 @@ import { Section } from '@lib/ui/components/Section';
 import { Text } from '@lib/ui/components/Text';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { Theme } from '@lib/ui/types/Theme';
-import { Message } from '../../../../src/lib/api-client';
+import { Message } from '../../lib/api-client';
 
 import { HtmlView } from '../../../core/components/HtmlView';
 import { useGetPerson } from '../../../core/queries/peopleHooks';

@@ -1,5 +1,5 @@
 import { Theme } from '@lib/ui/types/Theme';
-import { Booking, BookingTopic } from '../../../../src/lib/api-client';
+import { Booking, BookingTopic } from '../../lib/api-client';
 
 import { inRange } from 'lodash';
 import { DateTime, IANAZone } from 'luxon';

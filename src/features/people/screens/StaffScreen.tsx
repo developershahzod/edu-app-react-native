@@ -1,31 +1,30 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { OverviewList } from '@lib/ui/components/OverviewList';
 import { Section } from '@lib/ui/components/Section';
-import { OfferingCourseStaff } from '../../lib/api-client';
-import { Person } from '../../lib/api-client/Person';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useGetPersons } from '../../../core/queries/peopleHooks';
-import { ServiceStackParamList } from '../../services/components/ServicesNavigator';
 import { StaffListItem } from '../components/StaffListItem';
 
-type Props = NativeStackScreenProps<ServiceStackParamList, 'Staff'>;
+type Props = NativeStackScreenProps<any, 'Staff'>;
 
 export const StaffScreen = ({ route }: Props) => {
-  const { staff } = route.params;
+  const { t } = useTranslation();
+  const staff = route.params?.staff ?? [];
 
-  const staffIds = useMemo(() => staff.map(s => s.id), [staff]);
+  const staffIds = useMemo(() => staff.map((s: any) => s.id), [staff]);
 
   const { queries: staffQueries, isLoading } = useGetPersons(staffIds);
 
-  const staffPeople: (Person & OfferingCourseStaff)[] = useMemo(() => {
+  const staffPeople = useMemo(() => {
     if (isLoading) {
       return [];
     }
 
-    const staffData: (Person & OfferingCourseStaff)[] = [];
+    const staffData: any[] = [];
 
     staffQueries.forEach((staffQuery, index) => {
       if (!staffQuery.data) return;
@@ -43,11 +42,8 @@ export const StaffScreen = ({ route }: Props) => {
       <SafeAreaView>
         <Section>
           <OverviewList loading={isLoading}>
-            {staffPeople.map(person => (
-              <StaffListItem
-                key={`${person.id}${person.courseId}`}
-                staff={person}
-              />
+            {staffPeople.map((person) => (
+              <StaffListItem key={`${person.id}${person.courseId}`} person={person} subtitle={t('common.staff')} />
             ))}
           </OverviewList>
         </Section>

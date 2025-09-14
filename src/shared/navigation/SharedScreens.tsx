@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { OfferingCourseStaff } from '../../../../src/lib/api-client';
+import { OfferingCourseStaff } from '../../lib/api-client';
 import { ParamListBase } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 

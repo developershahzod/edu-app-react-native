@@ -86,8 +86,9 @@ export const ListItem = ({
               fontSize: fontSizes.md,
               lineHeight:
                 accessibility?.fontSize && accessibility.fontSize <= 125
-                  ? fontSizes.sm * 1.4
-                  : fontSizes.sm * 2,
+                  ? fontSizes.sm * 1.6
+                  : fontSizes.sm * 2.2,
+              color: colors.heading,
             },
             unread && {
               fontWeight: fontWeights.semibold,
@@ -98,7 +99,7 @@ export const ListItem = ({
           numberOfLines={
             multilineTitle
               ? undefined
-              : (titleProps?.numberOfLines ?? (card ? 2 : 1))
+              : (titleProps?.numberOfLines ?? (card ? 3 : 1))
           }
           ellipsizeMode={titleProps?.ellipsizeMode ?? 'tail'}
           {...titleProps}
@@ -119,12 +120,12 @@ export const ListItem = ({
             fontSize: fontSizes.sm,
             lineHeight:
               accessibility?.fontSize && accessibility.fontSize <= 125
-                ? fontSizes.sm * 1.4
-                : fontSizes.sm * 2.5,
+                ? fontSizes.sm * 1.6
+                : fontSizes.sm * 2.8,
+            color: colors.secondaryText,
           },
           subtitleStyle,
         ]}
-        numberOfLines={2}
         ellipsizeMode="tail"
         {...subtitleProps}
       >
@@ -149,6 +150,13 @@ export const ListItem = ({
       style={[
         {
           opacity: disabled ? 0.5 : 1,
+          backgroundColor: card ? colors.surface : 'transparent',
+          borderRadius: card ? 12 : 0,
+          // shadowColor: card ? colors.shadow : undefined,
+          // shadowOffset: card ? { width: 0, height: 2 } : undefined,
+          // shadowOpacity: card ? 0.1 : undefined,
+          // shadowRadius: card ? 4 : undefined,
+          // elevation: card ? 3 : undefined,
         },
         style,
       ]}
@@ -158,11 +166,11 @@ export const ListItem = ({
       <View
         style={[
           {
-            minHeight: 60,
+            minHeight: 64,
             flexDirection: card ? 'column' : 'row',
             alignItems: 'center',
-            paddingHorizontal: spacing[5],
-            paddingVertical: spacing[2],
+            paddingHorizontal: spacing[6],
+            paddingVertical: spacing[3],
           },
           containerStyle,
         ]}
@@ -171,12 +179,12 @@ export const ListItem = ({
         {leadingItem && (
           <View
             style={{
-              width: 38,
-              height: 38,
+              width: 44,
+              height: 44,
               alignItems: 'center',
               justifyContent: 'center',
-              marginLeft: card ? undefined : -7,
-              marginRight: card ? undefined : spacing[2],
+              marginLeft: card ? undefined : -8,
+              marginRight: card ? undefined : spacing[3],
             }}
           >
             {leadingItem}

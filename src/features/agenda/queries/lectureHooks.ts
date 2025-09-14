@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 
-import { Lecture as ApiLecture, LecturesApi } from '../../../../src/lib/api-client';
-import { ResponseError } from '../../../../src/lib/api-client';
+import { Lecture as ApiLecture, LecturesApi, ResponseError } from '../../../lib/api-client';
 import { useQueries, useQuery } from '@tanstack/react-query';
 
 import { DateTime, IANAZone } from 'luxon';
@@ -13,7 +12,7 @@ import {
 } from '../../../core/queries/courseHooks';
 import { CourseOverview } from '../../../core/types/api';
 import { isCurrentMonth } from '../../../utils/dates';
-import { toOASTruncable } from '../../../utils/dates.ts';
+import { toOASTruncable } from '../../../utils/dates';
 import { pluckData } from '../../../utils/queries';
 import { Lecture } from '../types/Lecture';
 import { formatNextLecture } from '../utils/formatters';
@@ -26,8 +25,12 @@ const addUniqueShortcodeToLectures = (
 ): Lecture[] => {
   return lectures.map(lecture => ({
     ...lecture,
-    uniqueShortcode: courses!.find(course => course.id === lecture.courseId)
-      ?.uniqueShortcode,
+    uniqueShortcode: courses!
+      .find(
+        course =>
+          String(course.id) ===
+          String((lecture as any).course_id ?? (lecture as any).courseId),
+      )?.uniqueShortcode,
   }));
 };
 
@@ -55,7 +58,7 @@ const getVisibleCourseIds = (
         course.id !== null &&
         !hiddenUniqueShortcodes.includes(course.uniqueShortcode),
     )
-    .map(course => course.id as number);
+    .map(course => Number(course.id));
 };
 
 const getLectureWeekQueryKey = (monday: DateTime) => {
@@ -72,9 +75,8 @@ const getLectureWeekQueryFn = async (
 
   return lectureClient
     .getLectures({
-      fromDate: toOASTruncable(monday),
-      toDate: toOASTruncable(until),
-      courseIds: visibleCourseIds,
+      fromDate: monday.toISO()!,
+      toDate: until.toISO()!,
     })
     .then(pluckData)
     .then(l => addUniqueShortcodeToLectures(l, courses!));
@@ -135,73 +137,16 @@ export const useGetLectureWeeks = (
 };
 
 export const useGetNextLecture = (
-  courseId: number,
-  coursesPreferences: CoursesPreferences,
+  _courseId: number,
+  _coursesPreferences: CoursesPreferences,
 ) => {
-  const coursesClient = useCoursesClient();
-  const { data: courses } = useGetCourses();
-
-  const nextLectureQuery = useQuery({
-    queryKey: ['nextLecture', courseId],
-    queryFn: async () => {
-      if (!courseId) return null;
-      try {
-        const response = await coursesClient.getNextLecture({ courseId });
-        if (!response?.data) return null;
-        let lecture = response.data as Lecture;
-        if (courses) {
-          const course = courses.find(c => c.id === lecture.courseId);
-          if (course) {
-            lecture = { ...lecture, uniqueShortcode: course.uniqueShortcode };
-          }
-        }
-        return formatNextLecture(lecture, coursesPreferences);
-      } catch (e) {
-        if (e instanceof ResponseError && e.response.status === 404) {
-          return null;
-        }
-        throw e;
-      }
-    },
-    enabled: !!courseId && !!courses, // Aspetta anche che i corsi siano caricati
-    staleTime: Infinity,
-  });
-
-  const nextLecture = nextLectureQuery.data ?? null;
-
-  const { dayOfMonth, weekDay, monthOfYear } = useMemo(() => {
-    if (!nextLecture?.date) {
-      return { dayOfMonth: '', weekDay: '', monthOfYear: '' };
-    }
-
-    try {
-      const lectureStart = DateTime.fromISO(nextLecture.date, {
-        zone: IANAZone.create('Europe/Rome'),
-      });
-
-      if (!lectureStart.isValid) {
-        return { dayOfMonth: '', weekDay: '', monthOfYear: '' };
-      }
-
-      return {
-        dayOfMonth: lectureStart.toFormat('d'),
-        weekDay: lectureStart.toFormat('ccc'),
-        monthOfYear: isCurrentMonth(lectureStart)
-          ? ''
-          : lectureStart.toFormat('LLL'),
-      };
-    } catch (error) {
-      console.error('Error parsing lecture date:', error);
-      return { dayOfMonth: '', weekDay: '', monthOfYear: '' };
-    }
-  }, [nextLecture]);
-
+  // Endpoint not available on the new API; return a stable empty result
   return {
-    nextLecture,
-    dayOfMonth,
-    weekDay,
-    monthOfYear,
-    isLoadingNextLecture: nextLectureQuery.isLoading,
-    error: nextLectureQuery.error,
+    nextLecture: null as any,
+    dayOfMonth: '',
+    weekDay: '',
+    monthOfYear: '',
+    isLoadingNextLecture: false,
+    error: undefined as any,
   };
 };

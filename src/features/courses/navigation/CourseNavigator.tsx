@@ -49,7 +49,7 @@ export const CourseNavigator = ({ route, navigation }: Props) => {
 
   useEffect(() => {
     if (!coursesQuery.data) return;
-    const course = coursesQuery.data;
+    const course = coursesQuery.data.find(c => String(c.id) === String(id));
     if (!course) return;
 
     navigation.setOptions({
@@ -76,7 +76,7 @@ export const CourseNavigator = ({ route, navigation }: Props) => {
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {course.name}
+            {course.name || course.title || course.uniqueShortcode}
           </Text>
         </Row>
       ),

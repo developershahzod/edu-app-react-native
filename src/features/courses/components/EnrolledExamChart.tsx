@@ -8,7 +8,7 @@ import { Text } from '@lib/ui/components/Text.tsx';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet.ts';
 import { useTheme } from '@lib/ui/hooks/useTheme.ts';
 import type { Theme } from '@lib/ui/types/Theme.ts';
-import type { CourseStatistics } from '../../../../src/lib/api-client';
+import type { CourseStatistics } from '../../lib/api-client';
 
 import { useFeedbackContext } from '~/core/contexts/FeedbackContext.ts';
 

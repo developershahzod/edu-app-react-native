@@ -1,4 +1,4 @@
-import { Message } from '../../../../src/lib/api-client';
+import { Message } from '../../lib/api-client';
 
 export const hasUnreadMessages = (messages: Message[]) =>
   messages.some(m => !m.isRead);

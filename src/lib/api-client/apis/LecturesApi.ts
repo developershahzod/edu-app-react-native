@@ -14,4 +14,21 @@ export class LecturesApi extends BaseAPI {
   async getLecture(params: { lectureId: number }): Promise<ApiResponse<Lecture>> {
     return this.request<ApiResponse<Lecture>>(`/lectures/${params.lectureId}`);
   }
+
+  async downloadLectureFile(params: { lectureId: number; filename: string }): Promise<Blob> {
+    // Use fetch directly to handle blob response type
+    const response = await fetch(
+      `/api/v1/lectures/download/${params.lectureId}/${encodeURIComponent(params.filename)}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.statusText}`);
+    }
+    return await response.blob();
+  }
 }

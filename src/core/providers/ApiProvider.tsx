@@ -133,8 +133,11 @@ export const ApiProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     // Update ApiContext based on the provided token and selected language
     const refreshContext = (credentials?: Credentials) => {
-     
-    
+      // Update API client with latest token and language
+      updateGlobalApiConfiguration({
+        token: credentials?.token,
+        language,
+      });
 
       setApiContext(() => {
         return {

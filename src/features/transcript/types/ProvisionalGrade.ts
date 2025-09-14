@@ -1,3 +1,3 @@
-import { ProvisionalGrade as ApiGrade } from '../../../../src/lib/api-client/ProvisionalGrade';
+import { ProvisionalGrade as ApiGrade } from '../../lib/api-client/ProvisionalGrade';
 
 export type ProvisionalGrade = ApiGrade & { gradeDescription: string };

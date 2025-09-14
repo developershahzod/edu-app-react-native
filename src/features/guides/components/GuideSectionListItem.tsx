@@ -1,5 +1,5 @@
 import { Text } from '@lib/ui/components/Text';
-import { GuideSection } from '../../../../src/lib/api-client';
+import { GuideSection } from '../../lib/api-client';
 
 import { HtmlView } from '../../../core/components/HtmlView';
 

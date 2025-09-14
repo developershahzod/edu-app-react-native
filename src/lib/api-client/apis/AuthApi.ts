@@ -16,28 +16,23 @@ export class AuthApi extends BaseAPI {
    * Login for access token (edu-api.qalb.uz)
    */
   async login(loginRequest: LoginRequest): Promise<Token> {
-      const formData = new URLSearchParams();
-      formData.append('username', loginRequest.username);
-      formData.append('password', loginRequest.password);
-      formData.append('client_id', 'string'); // Or use a real client ID
-      formData.append('client_secret', loginRequest.password); // Matching your curl
+    const formData = new URLSearchParams();
+    formData.append('username', loginRequest.username);
+    formData.append('password', loginRequest.password);
+    if (loginRequest.client_id) formData.append('client_id', loginRequest.client_id);
+    if (loginRequest.client_secret) formData.append('client_secret', loginRequest.client_secret);
+    if (loginRequest.scope) formData.append('scope', loginRequest.scope);
+    if (loginRequest.grant_type) formData.append('grant_type', loginRequest.grant_type);
 
-      const response = await fetch('https://edu-api.qalb.uz/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: formData.toString(),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Login failed: ${response.statusText}`);
-      }
-
-      const data: Token = await response.json();
-      return data;
-    }
+    return this.request<Token>('/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: formData.toString(),
+    });
+  }
 
   /**
    * Refresh access token

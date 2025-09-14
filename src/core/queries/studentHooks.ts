@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import { ExamGrade, Message, Student, StudentApi, ProvisionalGradeState } from '../../lib/api-client';
-import { UpdateDevicePreferencesRequest } from '../../lib/api-client/StudentApi';
+import { ExamGrade, Message, Student, StudentApi, ProvisionalGradeState, AuthApi, userToStudent } from '../../lib/api-client';
+
 import * as Sentry from '@sentry/react-native';
 import {
   useMutation,
@@ -12,7 +12,6 @@ import {
 
 import { DateTime } from 'luxon';
 
-import { toOASTruncable } from '../../utils/dates';
 import { filterUnread } from '../../utils/messages';
 import { pluckData } from '../../utils/queries';
 import { UpdateNotificationPreferencesRequestKey } from '../types/notificationTypes';
@@ -31,6 +30,12 @@ export const DEADLINES_QUERY_PREFIX = 'deadlines';
 
 const UNREAD_MAIL_QUERY_KEY = ['unreadEmails'];
 
+// Local fallback type until server model is finalized
+type UpdateDevicePreferencesRequestDto = Record<string, unknown>;
+
+// Local fallback type until server model is finalized
+type UpdateDevicePreferencesRequestLocal = Record<string, unknown>;
+
 const useStudentClient = (): StudentApi => {
   return new StudentApi();
 };
@@ -44,23 +49,20 @@ const handleAcquiredCredits = (student: Student) => {
 };
 
 export const useGetStudent = () => {
-  const studentClient = useStudentClient();
-
   const query = useQuery({
     queryKey: STUDENT_QUERY_KEY,
     queryFn: () =>
-      studentClient
-        .getStudent()
-        .then(pluckData)
+      new AuthApi()
+        .getMe()
+        .then(userToStudent)
         .then(handleAcquiredCredits)
         .then(s => {
-          s.degreeLevel = s.degreeLevel.replace(/ in$/, '');
+          s.degreeLevel = (s.degreeLevel || '').replace(/ in$/, '');
           return s;
         }),
     gcTime: Infinity,
   });
 
-  // Handle success logic with useEffect or similar pattern if needed
   if (query.data && query.isSuccess) {
     Sentry.setTag('student_degree_id', query.data.degreeName);
     Sentry.setTag('student_degree_name', query.data.degreeId);
@@ -166,8 +168,8 @@ const getDeadlineWeekQueryFn = async (
 
   return studentClient
     .getDeadlines({
-      fromDate: toOASTruncable(since),
-      toDate: toOASTruncable(until),
+      fromDate: since.toISO()!,
+      toDate: until.toISO()!,
     })
     .then(pluckData);
 };
@@ -211,8 +213,8 @@ export const useUpdateDevicePreferences = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (dto: UpdateDevicePreferencesRequest) =>
-      studentClient.updateDevicePreferences(dto),
+    mutationFn: (dto: UpdateDevicePreferencesRequestLocal) =>
+      studentClient.updateDevicePreferences(dto as any),
     onSuccess: () => {
       return queryClient.invalidateQueries();
     },

@@ -1,5 +1,5 @@
-import { CourseFileOverview } from '../../../../src/lib/api-client';
-import type { CourseDirectory } from '../../../../src/lib/api-client/CourseDirectory';
+import { CourseFileOverview } from '../../lib/api-client';
+import type { CourseDirectory } from '../../lib/api-client/CourseDirectory';
 
 export type CourseFileOverviewWithLocation = CourseFileOverview & {
   location: string;

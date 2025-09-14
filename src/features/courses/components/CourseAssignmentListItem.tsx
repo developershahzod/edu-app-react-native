@@ -7,7 +7,7 @@ import { faEllipsisVertical } from '@fortawesome/free-solid-svg-icons';
 import { FileListItem } from '@lib/ui/components/FileListItem';
 import { IconButton } from '@lib/ui/components/IconButton';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { CourseAssignment } from '../../../../src/lib/api-client';
+import { CourseAssignment } from '../../lib/api-client';
 
 import { IS_ANDROID } from '~/core/constants';
 

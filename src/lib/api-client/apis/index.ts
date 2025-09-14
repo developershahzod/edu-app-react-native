@@ -227,3 +227,4 @@ export { StudentApi } from './StudentApi';
 export { CoursesApi } from './CoursesApi';
 export { ExamsApi } from './ExamsApi';
 export { LecturesApi } from './LecturesApi';
+export { CalendarApi } from './CalendarApi';

@@ -7,7 +7,7 @@ import { RefreshControl } from '@lib/ui/components/RefreshControl';
 import { Section } from '@lib/ui/components/Section';
 import { Text } from '@lib/ui/components/Text';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { CourseGuideSection } from '../../../../src/lib/api-client/CourseGuideSection';
+import { CourseGuideSection } from '../../lib/api-client/CourseGuideSection';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { BottomBarSpacer } from '../../../core/components/BottomBarSpacer';

@@ -140,7 +140,7 @@ export const CourseListItem = ({
         }
       }}
       accessibilityLabel={`${accessibilityLabel} ${course.uniqueShortcode}`}
-      title={course.uniqueShortcode}
+      title={course.name}
       subtitle={subtitle}
       leadingItem={<CourseIndicator uniqueShortcode={course.uniqueShortcode} />}
       trailingItem={trailingItem}

@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 import { ListItem } from '@lib/ui/components/ListItem';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { Theme } from '@lib/ui/types/Theme';
-import { Booking } from '../../../../src/lib/api-client';
+import { Booking } from '../../lib/api-client';
 
 import { DateTime, IANAZone } from 'luxon';
 

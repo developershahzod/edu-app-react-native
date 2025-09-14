@@ -27,7 +27,7 @@ import { useNotifications } from '../../../core/hooks/useNotifications';
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
 import { useOpenInAppLink } from '../../../core/hooks/useOpenInAppLink.ts';
 import {
-  GetWebmailLink,
+  // GetWebmailLink,
   WEBMAIL_LINK_QUERY_KEY,
 } from '../../../core/queries/authHooks.ts';
 import { BOOKINGS_QUERY_KEY } from '../../../core/queries/bookingHooks';
@@ -61,7 +61,7 @@ export const ServicesScreen = () => {
     queryClient
       .fetchQuery({
         queryKey: WEBMAIL_LINK_QUERY_KEY,
-        queryFn: GetWebmailLink,
+        queryFn: () => Promise.resolve({ url: 'https://webmail.example.com' }),
         staleTime: 55 * 1000, // 55 seconds
         gcTime: 55 * 1000, // 55 seconds
       })
@@ -270,7 +270,7 @@ export const ServicesScreen = () => {
   );
 };
 
-const createStyles = ({ spacing }: Theme) =>
+const createStyles = ({ spacing, colors }: Theme) =>
   StyleSheet.create({
     grid: {
       margin: spacing[5],
@@ -279,5 +279,9 @@ const createStyles = ({ spacing }: Theme) =>
       position: 'absolute',
       top: -spacing[2.5],
       right: -spacing[2],
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
     },
   });

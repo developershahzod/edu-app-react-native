@@ -1,6 +1,6 @@
 import { ListItem } from '@lib/ui/components/ListItem';
 import { OverviewList } from '@lib/ui/components/OverviewList';
-import { OfferingCourseOverview } from '../../../../src/lib/api-client/OfferingCourseOverview';
+import { OfferingCourseOverview } from '../../lib/api-client/OfferingCourseOverview';
 
 import { useDegreeContext } from '../contexts/DegreeContext';
 import { CourseTrailingItem } from './CourseTrailingItem';

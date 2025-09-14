@@ -1,5 +1,5 @@
 import { ListItem, ListItemProps } from '@lib/ui/components/ListItem';
-import { Survey } from '../../../../src/lib/api-client';
+import { Survey } from '../../lib/api-client';
 
 import { useOpenInAppLink } from '../../../core/hooks/useOpenInAppLink.ts';
 

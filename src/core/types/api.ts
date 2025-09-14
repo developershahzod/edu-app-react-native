@@ -1,5 +1,4 @@
-import { CourseOverview as ApiCourseOverview } from '../../../../src/lib/api-client/CourseOverview';
-import { Exam as ApiExam } from '../../../../src/lib/api-client/Exam';
+import { CourseOverview as ApiCourseOverview, Exam as ApiExam } from '../../lib/api-client';
 
 export type SuccessResponse<T> = {
   data: T;

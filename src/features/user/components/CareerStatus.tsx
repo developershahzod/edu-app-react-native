@@ -6,10 +6,9 @@ import { Row } from '@lib/ui/components/Row';
 import { Text } from '@lib/ui/components/Text';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { StudentStatusEnum } from '../../../../src/lib/api-client';
 
 type Props = {
-  status: StudentStatusEnum;
+  status: string;
 };
 export const CareerStatus = ({ status }: Props) => {
   const styles = useStylesheet(createStyles);
@@ -17,14 +16,16 @@ export const CareerStatus = ({ status }: Props) => {
 
   const { dark, palettes } = useTheme();
   const [color, backgroundColor] = useMemo(() => {
-    switch (status) {
-      case StudentStatusEnum.Active:
+    const normalized = String(status).toLowerCase();
+    switch (normalized) {
+      case 'active':
         return [palettes.success[dark ? 300 : 600], palettes.success[500]];
-      case StudentStatusEnum.Closed:
-      case StudentStatusEnum.Cancelled:
-      case StudentStatusEnum.CareerClosed:
+      case 'closed':
+      case 'cancelled':
+      case 'career_closed':
+      case 'inactive':
         return [palettes.danger[dark ? 400 : 600], palettes.danger[600]];
-      case StudentStatusEnum.Graduated:
+      case 'graduated':
         return [
           palettes.primary[dark ? 300 : 600],
           palettes.primary[dark ? 400 : 500],

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, PressableProps, StyleSheet } from 'react-native';
 
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { BookingSeatCell as BookingSeatCellType } from '../../../../src/lib/api-client';
+import { BookingSeatCell as BookingSeatCellType } from '../../lib/api-client';
 
 export type BookingSeatProps = PressableProps & {
   seat: BookingSeatCellType;

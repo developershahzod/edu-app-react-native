@@ -5,7 +5,7 @@ import { ChatBubble } from '@lib/ui/components/ChatBubble';
 import { Text } from '@lib/ui/components/Text';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { Theme } from '@lib/ui/types/Theme';
-import { TicketReply } from '../../../../src/lib/api-client/TicketReply';
+import { TicketReply } from '../../lib/api-client/TicketReply';
 
 import { HtmlMessage } from './HtmlMessage';
 import { TicketAttachmentChip } from './TicketAttachmentChip';

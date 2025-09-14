@@ -35,9 +35,9 @@ import { LectureCard } from '../components/LectureCard';
 import { WeekFilter } from '../components/WeekFilter';
 import { useProcessedLectures } from '../hooks/useProcessedLectures.ts';
 import {
-  getAgendaWeekQueryKey,
-  useGetAgendaWeek,
-} from '../queries/agendaHooks';
+  AGENDA_CAL_QUERY_PREFIX,
+  useGetAgendaWeekFromCalendar,
+} from '../queries/calendarMyEventsHooks';
 import { AgendaItem } from '../types/AgendaItem';
 import { AgendaOption } from '../types/AgendaOption';
 
@@ -77,9 +77,9 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
 
   const {
     data: weekData,
-    isFetching /* , fetchPreviousPage, fetchNextPage*/,
+    isLoading: isFetching /* alias */,
     refetch,
-  } = useGetAgendaWeek(currentWeek);
+  } = useGetAgendaWeekFromCalendar(currentWeek);
 
   const calendarData = useMemo(() => {
     return weekData?.data?.flatMap(week => week.items) ?? [];
@@ -214,24 +214,20 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
 
   const isPrevMissing = useCallback(
     () =>
-      queryClient.getQueryData(
-        getAgendaWeekQueryKey(
-          agendaScreen.filters,
-          currentWeek.minus({ week: 1 }),
-        ),
-      ) === undefined,
-    [agendaScreen.filters, currentWeek, queryClient],
+      queryClient.getQueryData([
+        AGENDA_CAL_QUERY_PREFIX,
+        currentWeek.minus({ week: 1 }).toISODate(),
+      ]) === undefined,
+    [currentWeek, queryClient],
   );
 
   const isNextMissing = useCallback(
     () =>
-      queryClient.getQueryData(
-        getAgendaWeekQueryKey(
-          agendaScreen.filters,
-          currentWeek.plus({ week: 1 }),
-        ),
-      ) === undefined,
-    [agendaScreen.filters, currentWeek, queryClient],
+      queryClient.getQueryData([
+        AGENDA_CAL_QUERY_PREFIX,
+        currentWeek.plus({ week: 1 }).toISODate(),
+      ]) === undefined,
+    [currentWeek, queryClient],
   );
 
   const isPrevWeekDisabled = useOfflineDisabled(isPrevMissing);

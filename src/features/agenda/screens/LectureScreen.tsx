@@ -19,7 +19,7 @@ import { PersonListItem } from '@lib/ui/components/PersonListItem';
 import { Row } from '@lib/ui/components/Row.tsx';
 import { Swiper } from '@lib/ui/components/Swiper';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { VirtualClassroom } from '../../../../src/lib/api-client/VirtualClassroom';
+import { VirtualClassroom } from '../../lib/api-client/VirtualClassroom';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { DateTime, WeekdayNumbers } from 'luxon';

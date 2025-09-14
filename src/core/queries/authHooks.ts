@@ -2,7 +2,7 @@ import { Alert, Platform } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import uuid from 'react-native-uuid';
 
-import { AuthApi, LoginRequest, SwitchCareerRequest, AppInfoRequest } from '../../lib/api-client';
+import { AuthApi, LoginRequest } from '../../lib/api-client';
 import { getApp } from '@react-native-firebase/app';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -82,16 +82,29 @@ export const useLogin = () => {
       // For now, just return the token
       return token;
     },
-    onSuccess: async data => {
+    onSuccess: async (data, variables) => {
       const { access_token } = data;
-      // Store token and update context as needed
-      await setCredentials(access_token);
-      // Assuming username is part of token or fetched separately, here we just update preference with username placeholder
-      const username = 'user'; // TODO: fetch actual username if needed
-      updatePreference('username', username);
+      let username = variables?.username ?? '';
+
+      // 1) Prime global API config immediately so follow-up requests include Authorization
       refreshContext({ username, token: access_token });
 
-      
+      // 2) Fetch canonical username/login
+      try {
+        const me = await new AuthApi().getMe();
+        if (me?.login) {
+          username = me.login;
+        }
+      } catch {
+        // ignore; fall back to provided username
+      }
+
+      // 3) Persist credentials and preferences, then refresh context with final username
+      if (username && access_token) {
+        await setCredentials(username, access_token);
+        updatePreference('username', username);
+      }
+      refreshContext({ username, token: access_token });
     },
     onError: (error: Error) => {
       // You can add error handling logic here if needed

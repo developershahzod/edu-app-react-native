@@ -1,5 +1,5 @@
-import { PlaceRef } from '../../../../src/lib/api-client';
-import { RelatedVirtualClassroom } from '../../../../src/lib/api-client/RelatedVirtualClassroom';
+import { PlaceRef } from '../../lib/api-client';
+import { RelatedVirtualClassroom } from '../../lib/api-client/RelatedVirtualClassroom';
 
 import { DateTime } from 'luxon';
 

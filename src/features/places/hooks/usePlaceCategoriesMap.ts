@@ -1,4 +1,4 @@
-import { PlaceCategory } from '../../../../src/lib/api-client';
+import { PlaceCategory } from '../../lib/api-client';
 
 import { useGetPlaceCategories } from '../../../core/queries/placesHooks';
 
