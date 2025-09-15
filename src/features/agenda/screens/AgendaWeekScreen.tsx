@@ -1,3 +1,4 @@
+// AgendaWeekScreen.tsx
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -40,22 +41,18 @@ import {
 } from '../queries/calendarMyEventsHooks';
 import { AgendaItem } from '../types/AgendaItem';
 import { AgendaOption } from '../types/AgendaOption';
+import { useGetMyEvents } from '~/core/queries/calendarHooks.ts';
 
 type Props = NativeStackScreenProps<AgendaStackParamList, 'AgendaWeek'>;
 
 export const AgendaWeekScreen = ({ navigation, route }: Props) => {
   const styles = useStylesheet(createStyles);
-
   const queryClient = useQueryClient();
 
   const { updatePreference, agendaScreen } = usePreferencesContext();
-
   const { language, accessibility } = usePreferencesContext();
-
   const { t } = useTranslation();
-  const { palettes, fontSizes } = useTheme();
-
-  const { colors } = useTheme();
+  const { palettes, fontSizes, colors } = useTheme();
 
   const { params } = route;
   const date = params?.date ? DateTime.fromISO(params.date) : DateTime.now();
@@ -75,20 +72,34 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
 
   const [dataPickerIsOpened, setDataPickerIsOpened] = useState<boolean>(false);
 
+  // ✅ Fetch my-events from API
   const {
     data: weekData,
-    isLoading: isFetching /* alias */,
+    isLoading: isFetching,
     refetch,
-  } = useGetAgendaWeekFromCalendar(currentWeek);
+  } = useGetMyEvents();
 
-  const calendarData = useMemo(() => {
-    return weekData?.data?.flatMap(week => week.items) ?? [];
+  // ✅ Safe extraction of events (flat array)
+  const allEvents = useMemo(() => {
+    return Array.isArray(weekData?.data) ? weekData.data : [];
   }, [weekData?.data]);
 
+  // ✅ Filter events by currentWeek
+  const calendarData = useMemo(() => {
+    return allEvents.filter(event => {
+      if (!event?.start) return false;
+      const eventDate = DateTime.fromISO(event.start);
+      return eventDate >= currentWeek.startOf('week') &&
+             eventDate < currentWeek.plus({ weeks: 1 }).startOf('week');
+    });
+  }, [allEvents, currentWeek]);
+
+  // Determine the maximum weekday to decide week length
   const calendarMax = useMemo(() => {
     return (
       calendarData.reduce((max, item) => {
-        return item.start.weekday > max.start.weekday ? item : max;
+        const eventDate = DateTime.fromISO(item.start);
+        return eventDate.weekday > DateTime.fromISO(max.start).weekday ? item : max;
       }, calendarData[0]) ?? null
     );
   }, [calendarData]);
@@ -96,8 +107,9 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
   const filteredCalendarData = useProcessedLectures(calendarData);
 
   const weekLength = useMemo(() => {
-    if (calendarMax && calendarMax.start.weekday > 5) {
-      return calendarMax.start.weekday as WeekNum;
+    if (calendarMax) {
+      const weekday = DateTime.fromISO(calendarMax.start).weekday;
+      if (weekday > 5) return weekday as WeekNum;
     }
     return 5;
   }, [calendarMax]);
@@ -166,7 +178,6 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
     };
 
     const onPressOption = ({ nativeEvent: { event } }: NativeActionEvent) => {
-      // eslint-disable-next-line default-case
       switch (event) {
         case 'daily':
           switchToDaily();
@@ -255,6 +266,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
           isPrevWeekDisabled={isPrevWeekDisabled}
         />
       </HeaderAccessory>
+
       <DatePicker
         modal
         locale={language}
@@ -267,6 +279,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
         confirmText={t('common.confirm')}
         cancelText={t('common.cancel')}
       />
+
       <View
         style={styles.calendarContainer}
         onLayout={e => {
@@ -278,6 +291,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
           (isFetching && (
             <ActivityIndicator size="large" style={styles.loader} />
           ))}
+
         {calendarHeight && (
           <Calendar<AgendaItem>
             events={filteredCalendarData}

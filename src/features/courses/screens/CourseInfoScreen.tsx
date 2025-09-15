@@ -257,6 +257,7 @@ export const CourseInfoScreen = () => {
         </Card>
 
         {/* Students Section */}
+
           <Section>
           <SectionHeader title={'About'} />
           <OverviewList indented>
@@ -306,7 +307,7 @@ export const CourseInfoScreen = () => {
                   (n.author ? ` - ${n.author.name} ${n.author.surname}` : '')
                 }
                 linkTo={{
-                  screen: 'NoticeScreen',
+                  screen: 'Notice',
                   params: { noticeId: n.id, courseId },
                 }}
               />

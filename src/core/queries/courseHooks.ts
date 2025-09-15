@@ -536,7 +536,7 @@ export const useGetCourseNotices = (courseId: number | string) => {
     queryKey: getCourseKey(courseId, CourseSectionEnum.Notices),
     queryFn: async () => {
       const res = await fetch(
-        `https://edu-api.qalb.uz/api/v1/courses/${courseId}/news`,
+        `https://edu-api.qalb.uz/api/v1/courses/${courseId}/news/`,
         {
           headers: {
             Accept: 'application/json',
@@ -672,3 +672,4 @@ export const useUpdateCoursePreferences = (courseId: number | string) => {
     },
   });
 };
+

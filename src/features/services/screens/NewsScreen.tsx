@@ -11,6 +11,7 @@ import { NewsEventListItem } from '../components/NewsEventListItem';
 export const NewsScreen = () => {
   const eventsQuery = useGetMyEvents();
 
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"

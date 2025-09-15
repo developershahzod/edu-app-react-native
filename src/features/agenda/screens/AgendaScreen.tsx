@@ -39,8 +39,7 @@ import { DEADLINES_QUERY_PREFIX } from '../../../core/queries/studentHooks';
 import { AgendaFilters } from '../components/AgendaFilters';
 import { AgendaStackParamList } from '../components/AgendaNavigator';
 import { WeeklyAgenda } from '../components/WeeklyAgenda';
-import { AGENDA_QUERY_PREFIX } from '../queries/agendaHooks';
-import { useGetAgendaWeeksFromCalendar } from '../queries/calendarMyEventsHooks';
+import { AGENDA_QUERY_PREFIX, useGetAgendaWeeks } from '../queries/agendaHooks';
 import { LECTURES_QUERY_PREFIX } from '../queries/lectureHooks';
 import { AgendaOption } from '../types/AgendaOption';
 import { AgendaState } from '../types/AgendaState';
@@ -70,8 +69,7 @@ export const AgendaScreen = ({ navigation, route }: Props) => {
     selectedDate.startOf('week'),
   ]);
 
-  // Use unified calendar endpoint /api/v1/calendar/my-events
-  const { isLoading, data } = useGetAgendaWeeksFromCalendar(weeks);
+  const { isLoading, data } = useGetAgendaWeeks(weeks);
 
   const [dataPickerIsOpened, setDataPickerIsOpened] = useState<boolean>(false);
 

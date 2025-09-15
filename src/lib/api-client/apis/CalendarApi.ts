@@ -19,15 +19,12 @@ export type CalendarEvent = {
 };
 
 export class CalendarApi extends BaseAPI {
-  async getMyEvents(params: { fromDate: string; toDate: string }): Promise<ApiResponse<CalendarEvent[]>> {
+  async getMyEvents(): Promise<ApiResponse<CalendarEvent[]>> {
     return this.request<ApiResponse<CalendarEvent[]>>(
       '/calendar/my-events',
       {
         // The runtime supports init.query passthrough
-        query: {
-          fromDate: params.fromDate,
-          toDate: params.toDate,
-        },
+    
       } as any
     );
   }
