@@ -1,10 +1,8 @@
-// AgendaWeekScreen.tsx (redesigned)
-// Modern, compact, and consistent UI for a weekly timetable
-
+// AgendaWeekScreen.tsx (redesigned with Event Detail Modal)
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Text, ScrollView, Dimensions, FlatList } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Text, ScrollView, Dimensions, FlatList, Modal, Pressable } from 'react-native';
 import DatePicker from 'react-native-date-picker';
-import { faCalendarDay, faChevronLeft, faChevronRight, faEllipsisVertical } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarDay, faEllipsisVertical } from '@fortawesome/free-solid-svg-icons';
 import { ActivityIndicator } from '@lib/ui/components/ActivityIndicator';
 import { HeaderAccessory } from '@lib/ui/components/HeaderAccessory';
 import { IconButton } from '@lib/ui/components/IconButton';
@@ -20,7 +18,6 @@ import { usePreferencesContext } from '../../../core/contexts/PreferencesContext
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
 import { AgendaStackParamList } from '../components/AgendaNavigator';
 import { AgendaTypeFilter } from '../components/AgendaTypeFilter';
-import { WeekFilter } from '../components/WeekFilter';
 import { AGENDA_CAL_QUERY_PREFIX } from '../queries/calendarMyEventsHooks';
 import { AgendaOption } from '../types/AgendaOption';
 import { useGetMyEvents } from '~/core/queries/calendarHooks.ts';
@@ -41,18 +38,16 @@ interface ProcessedEvent {
 const { width: screenWidth } = Dimensions.get('window');
 const DAY_COLUMN_MIN = Math.max(screenWidth / 7, 120);
 
-// ---- Small pure helpers ----
 const clamp = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
 
 // ---- Event Card ----
 const EventCard = ({ event, compact, onPress }: { event: ProcessedEvent; compact?: boolean; onPress?: () => void }) => {
-  const { palettes, fontSizes } = useTheme();
+  const { palettes } = useTheme();
 
   const durationMillis = event.end.toMillis() - event.start.toMillis();
   const hours = Math.round(durationMillis / (1000 * 60 * 60));
 
   const typeBackground = useMemo(() => {
-    // small palette by course title (fallback to color)
     const title = event.course?.title?.toLowerCase() ?? '';
     if (title.includes('program')) return { bg: '#f0f9ff', border: '#0ea5e9' };
     if (title.includes('web')) return { bg: '#f0fdf4', border: '#22c55e' };
@@ -64,7 +59,7 @@ const EventCard = ({ event, compact, onPress }: { event: ProcessedEvent; compact
   return (
     <TouchableOpacity
       activeOpacity={0.8}
-    
+      onPress={onPress}
       style={[localStyles.eventCard, { backgroundColor: typeBackground.bg, borderLeftColor: typeBackground.border }, compact && localStyles.eventCardCompact]}
     >
       <View style={localStyles.eventTopRow}>
@@ -96,23 +91,22 @@ const EventCard = ({ event, compact, onPress }: { event: ProcessedEvent; compact
 };
 
 // ---- Day Column ----
-const DayColumn = ({ date, events, isToday }: { date: DateTime; events: ProcessedEvent[]; isToday: boolean }) => {
-  const { palettes, colors } = useTheme();
+const DayColumn = ({ date, events, isToday, onEventPress }: { date: DateTime; events: ProcessedEvent[]; isToday: boolean; onEventPress: (ev: ProcessedEvent) => void }) => {
+  const { colors } = useTheme();
   const isWeekend = date.weekday === 6 || date.weekday === 7;
 
   return (
-    <View style={[localStyles.dayColumn, isToday && { borderColor: palettes.primary[500], borderWidth: 1.5 }, isWeekend && { backgroundColor: colors.surfaceVariant }]}>
+    <View style={[localStyles.dayColumn, isToday && { borderColor: colors.primary, borderWidth: 1.5 }, isWeekend && { backgroundColor: colors.surfaceVariant }]}>
       <View style={localStyles.dayHeaderCompact}>
-        <Text style={[localStyles.dayNameCompact, isToday && { color: palettes.primary[700] }]}>{date.toFormat('ccc')}</Text>
+        <Text style={[localStyles.dayNameCompact, isToday && { color: colors.primary }]}>{date.toFormat('ccc')}</Text>
         <View style={localStyles.dayNumberWrap}>
-          <Text style={[localStyles.dayNumberCompact, isToday && { color: palettes.primary[700], fontWeight: '800' }]}>{date.toFormat('d')}</Text>
-          {isToday && <View style={[localStyles.todayDot, { backgroundColor: palettes.primary[500] }]} />}
+          <Text style={[localStyles.dayNumberCompact, isToday && { color: colors.primary, fontWeight: '800' }]}>{date.toFormat('d')}</Text>
+          {isToday && <View style={[localStyles.todayDot, { backgroundColor: colors.primary }]} />}
         </View>
       </View>
 
       {events.length === 0 ? (
         <View style={localStyles.emptyDayCenter}>
- 
           <Text style={localStyles.emptyText}>{isToday ? 'Clear schedule' : 'No events'}</Text>
         </View>
       ) : (
@@ -123,7 +117,7 @@ const DayColumn = ({ date, events, isToday }: { date: DateTime; events: Processe
           contentContainerStyle={localStyles.eventsList}
           renderItem={({ item, index }) => (
             <View style={[localStyles.eventWrapper, index === events.length - 1 && { marginBottom: 12 }]}>
-              <EventCard event={item} compact={events.length > 4} onPress={() => console.log('open', item.id)} />
+              <EventCard event={item} compact={events.length > 4} onPress={() => onEventPress(item)} />
             </View>
           )}
         />
@@ -132,32 +126,54 @@ const DayColumn = ({ date, events, isToday }: { date: DateTime; events: Processe
   );
 };
 
+// ---- Event Detail Modal ----
+const EventDetailModal = ({ event, visible, onClose }: { event: ProcessedEvent | null; visible: boolean; onClose: () => void }) => {
+  if (!event) return null;
+
+  return (
+    <Modal animationType="none" transparent={true} visible={visible} onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 10 }}>{event.title}</Text>
+          {event.course?.title && <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 6 }}>Course: {event.course.title}</Text>}
+          <Text style={{ marginBottom: 6 }}>{event.description}</Text>
+          <Text style={{ marginBottom: 6 }}>All Day: {event.allDay ? 'Yes' : 'No'}</Text>
+          <Text style={{ marginBottom: 6 }}>Start: {event.start.toFormat('fff')}</Text>
+          <Text style={{ marginBottom: 6 }}>End: {event.end.toFormat('fff')}</Text>
+       
+
+          <Pressable 
+            onPress={onClose} 
+            style={{ marginTop: 12, padding: 10, backgroundColor: '#0ea5e9', borderRadius: 8, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700' }}>Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export const AgendaWeekScreen = ({ navigation, route }: Props) => {
   const styles = useStylesheet((t: any) => createStyles(t));
-  const { palettes, fontSizes } = useTheme();
+  const { colors } = useTheme();
   const queryClient = useQueryClient();
-  const { updatePreference, agendaScreen } = usePreferencesContext();
-  const { language } = usePreferencesContext();
+  const { updatePreference, agendaScreen, language } = usePreferencesContext();
 
   const { params } = route;
   const initialDate = params?.date ? DateTime.fromISO(params.date) : DateTime.now();
   const [currentWeek, setCurrentWeek] = useState(() => initialDate.startOf('week'));
   const [selectedDate, setSelectedDate] = useState(() => initialDate);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<ProcessedEvent | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const { data: weekData, isLoading: isFetching, refetch, error } = useGetMyEvents();
 
-  // process events once
+  // process events
   const processedEvents = useMemo(() => {
-    const arr: any[] = [];
     if (!weekData) return [] as ProcessedEvent[];
-    if (Array.isArray(weekData)) arr.push(...weekData);
-    else if (Array.isArray(weekData.data)) arr.push(...weekData.data);
-    else {
-      const possible = Object.values(weekData).find(Array.isArray);
-      if (possible) arr.push(...(possible as any[]));
-    }
-
+    const arr: any[] = Array.isArray(weekData) ? weekData : Array.isArray(weekData.data) ? weekData.data : Object.values(weekData).find(Array.isArray) || [];
     return arr.map((ev: any) => {
       const start = DateTime.fromISO(ev.start);
       const end = ev.end ? DateTime.fromISO(ev.end) : (ev.allDay ? start.endOf('day') : start.plus({ hours: 1 }));
@@ -200,9 +216,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
     setSelectedDate(dt);
   }, []);
 
-  const screenOptions = useMemo<AgendaOption[]>(() => [
-    { id: 'refresh', title: 'Refresh' },
-  ], []);
+  const screenOptions = useMemo<AgendaOption[]>(() => [{ id: 'refresh', title: 'Refresh' }], []);
 
   useLayoutEffect(() => {
     const onPressAction = ({ nativeEvent: { event } }: NativeActionEvent) => {
@@ -240,18 +254,10 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
         <Tabs contentContainerStyle={styles.tabs}><AgendaTypeFilter /></Tabs>
 
         <View style={styles.weekControls}>
-          {/* <TouchableOpacity style={styles.navButton} onPress={getPrevWeek}>
-            <IconButton icon={faChevronLeft} />
-          </TouchableOpacity> */}
-
           <View style={styles.weekLabelWrap}>
             <Text style={styles.weekLabel}>{currentWeek.toFormat('MMM d')}</Text>
             <Text style={styles.weekSubLabel}>{`${weekDates[0].toFormat('d')} — ${weekDates[6].toFormat('d, MMM yyyy')}`}</Text>
           </View>
-
-          {/* <TouchableOpacity style={styles.navButton} onPress={getNextWeek}>
-            <IconButton icon={faChevronRight} />
-          </TouchableOpacity> */}
         </View>
       </HeaderAccessory>
 
@@ -268,7 +274,15 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekScroll}>
           {weekDates.map(d => (
             <View key={d.toISODate()} style={{ minWidth: DAY_COLUMN_MIN }}>
-              <DayColumn date={d} events={eventsByDay[d.toISODate()] || []} isToday={d.hasSame(DateTime.now(), 'day')} />
+              <DayColumn
+                date={d}
+                events={eventsByDay[d.toISODate()] || []}
+                isToday={d.hasSame(DateTime.now(), 'day')}
+                onEventPress={(ev) => {
+                  setSelectedEvent(ev);
+                  setModalVisible(true);
+                }}
+              />
             </View>
           ))}
         </ScrollView>
@@ -280,17 +294,19 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
           <Text style={styles.emptyStateSubtitle}>{error ? `Error: ${(error as any)?.message}` : 'Try refreshing or choose another week'}</Text>
         </View>
       )}
+
+      {/* Event Detail Modal */}
+      <EventDetailModal event={selectedEvent} visible={modalVisible} onClose={() => setModalVisible(false)} />
     </View>
   );
 };
 
 // ---- Styles ----
-const createStyles = ({ spacing, colors, palettes, fontWeights, fontSizes, shapes }: any) => ({
+const createStyles = ({ spacing, colors, palettes, fontWeights, fontSizes }: any) => ({
   container: { flex: 1, backgroundColor: colors.background },
   headerRow: { padding: spacing[2], paddingHorizontal: spacing[3], backgroundColor: colors.surface, borderBottomColor: colors.divider, borderBottomWidth: 1 },
   tabs: { alignItems: 'center' },
   weekControls: { flexDirection: 'row', alignItems: 'center' },
-  navButton: { paddingHorizontal: 8 },
   weekLabelWrap: { alignItems: 'center', paddingHorizontal: 8 },
   weekLabel: { fontSize: fontSizes.md, fontWeight: fontWeights.bold, color: colors.text },
   weekSubLabel: { fontSize: fontSizes.xs, color: colors.textSecondary },
@@ -304,8 +320,11 @@ const createStyles = ({ spacing, colors, palettes, fontWeights, fontSizes, shape
   emptyStateSubtitle: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 6 },
 });
 
-// Local (component) styles — these are layout/visual details for cards & columns
+// Local (component) styles — cards & columns
 const localStyles = StyleSheet.create({
+  dayColumn: { minHeight: 420, padding: 10, marginHorizontal: 6, borderRadius: 12, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
+  dayHeaderCompact: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  dayNameCompact: { fontSize: 12, textTransform: 'uppercase', color: '#6b7280' },
   dayColumn: {
     minHeight: 420,
     padding: 10,
@@ -323,7 +342,7 @@ const localStyles = StyleSheet.create({
   dayNumberCompact: { fontSize: 18, marginLeft: 6, color: '#111827' },
   todayDot: { width: 8, height: 8, borderRadius: 8, marginLeft: 8 },
 
-  emptyDayCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
+  emptyDayCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24,  width: 250, },
   emptyEmoji: { fontSize: 28 },
   emptyText: { color: '#6b7280', marginTop: 8 },
 

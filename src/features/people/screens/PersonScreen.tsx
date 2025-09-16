@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Image,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 
 import {
@@ -28,16 +30,14 @@ import { Text } from '@lib/ui/components/Text';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { useTheme } from '@lib/ui/hooks/useTheme';
 import { Theme } from '@lib/ui/types/Theme';
-import { PersonCourse, PhoneNumber } from '../../lib/api-client';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { BottomBarSpacer } from '../../../core/components/BottomBarSpacer';
 import { useAccessibility } from '../../../core/hooks/useAccessibilty';
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
 import { useOpenInAppLink } from '../../../core/hooks/useOpenInAppLink.ts';
-import { useGetPerson } from '../../../core/queries/peopleHooks';
-import { notNullish } from '../../../utils/predicates';
 import { ServiceStackParamList } from '../../services/components/ServicesNavigator';
+import { useApiContext } from '../../../core/contexts/ApiContext';
 
 type Props = NativeStackScreenProps<ServiceStackParamList, 'Person'>;
 
@@ -48,30 +48,74 @@ export const PersonScreen = ({ route }: Props) => {
   const { t } = useTranslation();
   const { colors, fontSizes } = useTheme();
   const styles = useStylesheet(createStyles);
-  const personQuery = useGetPerson(id);
+  const { token } = useApiContext();
   const { accessibilityListLabel } = useAccessibility();
   const openInAppLink = useOpenInAppLink();
-  const person = personQuery.data;
-  const fullName = [person?.firstName, person?.lastName]
-    .filter(notNullish)
-    .join(' ');
-  const courses = person?.courses ?? [];
-  const phoneNumbers = person?.phoneNumbers;
+
+  // ✅ Always initialize as an empty array
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const isOffline = useOfflineDisabled();
+
+  // 🔥 Fetch all contacts from API
+  const fetchContacts = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('https://edu-api.qalb.uz/api/v1/users/contacts', {
+        headers: {
+          accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to fetch contacts');
+      const data = await res.json();
+      setContacts(Array.isArray(data) ? data : []); // ✅ ensure array
+    } catch (err) {
+      console.error('Error fetching contacts:', err);
+      setContacts([]); // ✅ fallback empty
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContacts();
+  }, [token]);
+
+  // ✅ Find person safely (returns undefined if not found)
+  const person = useMemo(() => contacts.find(c => c.id === id), [contacts, id]);
+
+  const fullName = person ? `${person.name ?? ''} ${person.surname ?? ''}`.trim() : '';
+  const courses = person?.courses ?? []; // ✅ default to array
+  const phoneNumbers = person?.phoneNumbers ?? []; // ✅ default to array
+
+  // Show loading spinner before data is ready
+  if (loading && contacts.length === 0) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  // Show empty state if person not found
+  if (!loading && !person) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>{t('contactsScreen.emptyState')}</Text>
+      </SafeAreaView>
+    );
+  }
 
   const header = (
     <Col ph={5} gap={6} mb={6}>
       <Text weight="bold" variant="title" style={styles.title}>
         {fullName}
       </Text>
-      {(!person ||
-        person?.picture ||
-        person?.role ||
-        person?.facilityShortName ||
-        person?.profileUrl) && (
+      {(person?.picture || person?.role_type || person?.profileUrl) && (
         <Row gap={6}>
-          <View accessible={true} accessibilityLabel={t('common.profilePic')}>
+          <View accessible accessibilityLabel={t('common.profilePic')}>
             {person?.picture ? (
               <Image
                 source={{ uri: person.picture }}
@@ -88,27 +132,18 @@ export const PersonScreen = ({ route }: Props) => {
             )}
           </View>
           <Col style={styles.info}>
-            {person?.role && (
+            {person?.role_type && (
               <Metric
                 title={t('personScreen.role')}
-                value={person.role}
+                value={person.role_type}
                 style={styles.spaceBottom}
-                accessible={true}
+                accessible
               />
             )}
-            {person?.facilityShortName && (
-              <Metric
-                title={t('personScreen.department')}
-                value={person.facilityShortName}
-                style={styles.spaceBottom}
-                accessible={true}
-              />
-            )}
-
             {person?.profileUrl && (
               <TouchableOpacity
                 onPress={() => openInAppLink(person.profileUrl)}
-                accessible={true}
+                accessible
                 accessibilityRole="link"
               >
                 <Row align="center">
@@ -128,54 +163,8 @@ export const PersonScreen = ({ route }: Props) => {
     </Col>
   );
 
-  const renderPhoneNumber = (phoneNumber: PhoneNumber, index: number) => {
-    return (
-      <ListItem
-        key={index}
-        isAction
-        leadingItem={<Icon icon={faPhone} size={fontSizes.xl} />}
-        title={t('common.phone')}
-        subtitle={[phoneNumber.full, phoneNumber?.internal]
-          .filter(notNullish)
-          .join(' / ')}
-        onPress={() => Linking.openURL(`tel:${phoneNumber.full}`)}
-      />
-    );
-  };
-
-  interface RenderedCourseProps {
-    course: PersonCourse;
-    index: number;
-    disabled: boolean;
-  }
-
-  const RenderedCourse = ({ course, index, disabled }: RenderedCourseProps) => {
-    const role = course.role === 'Titolare' ? 'roleHolder' : 'roleCollaborator';
-
-    return (
-      <ListItem
-        title={course.name}
-        subtitle={`${course.year} - ${t('common.' + role)}`}
-        isAction
-        accessibilityLabel={`${accessibilityListLabel(
-          index,
-          courses?.length || 0,
-        )}. ${course.name}, ${course.year} -${t('common.' + role)}`}
-        linkTo={{
-          screen: 'DegreeCourse',
-          params: {
-            courseShortcode: course.shortcode,
-            year: course.year,
-          },
-        }}
-        disabled={disabled}
-      />
-    );
-  };
-
   return (
     <ScrollView
-      refreshControl={<RefreshControl queries={[personQuery]} manual />}
       contentInsetAdjustmentBehavior="automatic"
     >
       <SafeAreaView>
@@ -185,37 +174,48 @@ export const PersonScreen = ({ route }: Props) => {
             <SectionHeader
               title={t('personScreen.contacts')}
               accessibilityLabel={`${t('personScreen.contacts')}. ${
-                phoneNumbers?.length && t('common.phoneContacts')
+                phoneNumbers.length > 0 && t('common.phoneContacts')
               }. ${t('personScreen.sentEmail')}`}
             />
-            <OverviewList indented loading={personQuery.isLoading}>
-              {phoneNumbers?.map(renderPhoneNumber)}
-              <ListItem
-                isAction
-                leadingItem={<Icon icon={faEnvelope} size={fontSizes.xl} />}
-                title={t('common.email')}
-                subtitle={person?.email}
-                onPress={() => Linking.openURL(`mailto:${person?.email}`)}
-              />
+            <OverviewList indented loading={loading}>
+              {person?.phone_number && (
+                <ListItem
+                  isAction
+                  leadingItem={<Icon icon={faPhone} size={fontSizes.xl} />}
+                  title={t('common.phone')}
+                  subtitle={person.phone_number}
+                  onPress={() => Linking.openURL(`tel:${person.phone_number}`)}
+                />
+              )}
+              {person?.email && (
+                <ListItem
+                  isAction
+                  leadingItem={<Icon icon={faEnvelope} size={fontSizes.xl} />}
+                  title={t('common.email')}
+                  subtitle={person.email}
+                  onPress={() => Linking.openURL(`mailto:${person.email}`)}
+                />
+              )}
             </OverviewList>
           </Section>
           {courses.length > 0 && (
             <Section>
               <SectionHeader
                 title={t('common.course_plural')}
-                accessible={true}
+                accessible
                 accessibilityLabel={`${t('personScreen.coursesLabel')}. ${t(
                   'personScreen.totalCourses',
                   { total: courses.length },
                 )}`}
               />
               <OverviewList>
-                {courses.map((course, index) => (
-                  <RenderedCourse
+                {courses.map((course: any, index: number) => (
+                  <ListItem
                     key={course.id}
-                    course={course}
-                    index={index}
+                    title={course.name}
+                    subtitle={`${course.year}`}
                     disabled={isOffline}
+                    accessibilityLabel={`${accessibilityListLabel(index, courses.length)}. ${course.name}, ${course.year}`}
                   />
                 ))}
               </OverviewList>

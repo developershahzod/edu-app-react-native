@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, ScrollView, StyleSheet } from 'react-native';
 
@@ -15,22 +15,80 @@ import { Theme } from '@lib/ui/types/Theme';
 import { usePreferencesContext } from '../../../core/contexts/PreferencesContext';
 import { useDebounceValue } from '../../../core/hooks/useDebounceValue';
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
-import { useGetPeople } from '../../../core/queries/peopleHooks';
 import { GlobalStyles } from '../../../core/styles/GlobalStyles';
 import { PersonOverviewListItem } from '../components/PersonOverviewListItem';
 import { RecentSearch } from '../components/RecentSearch';
 
+import { useApiContext } from '../../../core/contexts/ApiContext';
+
 export const ContactsScreen = () => {
   const [search, setSearch] = useState('');
+  const [people, setPeople] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   const debounceSearch = useDebounceValue(search, 400);
   const styles = useStylesheet(createStyles);
   const { spacing } = useTheme();
   const { t } = useTranslation();
-  const enabled = debounceSearch.length >= 2;
-  const { isLoading, data: people } = useGetPeople(debounceSearch, enabled);
   const { peopleSearched } = usePreferencesContext();
+  const { token } = useApiContext();
 
   const isInputDisabled = useOfflineDisabled();
+  const enabled = debounceSearch.length >= 0;
+
+  // Fetch contacts when search changes
+  useEffect(() => {
+    if (!enabled) return;
+
+    const fetchContacts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(
+          `https://edu-api.qalb.uz/api/v1/users/contacts?search=${debounceSearch}`,
+          {
+            headers: {
+              accept: 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error('Failed to fetch contacts');
+        const data = await response.json();
+        setPeople(data);
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+        setPeople([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContacts();
+  }, [debounceSearch, enabled, token]);
+
+  // 🔥 Sort contacts by how well they match the search text
+  const sortedPeople = useMemo(() => {
+    if (!debounceSearch.trim()) return people;
+
+    const lowerSearch = debounceSearch.toLowerCase();
+
+    return [...people].sort((a, b) => {
+      const aName = `${a.name ?? ''} ${a.surname ?? ''}`.toLowerCase();
+      const bName = `${b.name ?? ''} ${b.surname ?? ''}`.toLowerCase();
+
+      const aIndex = aName.indexOf(lowerSearch);
+      const bIndex = bName.indexOf(lowerSearch);
+
+      // Names that include the search first
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+
+      // Sort by earliest match position
+      return aIndex - bIndex;
+    });
+  }, [debounceSearch, people]);
 
   return (
     <>
@@ -51,7 +109,9 @@ export const ContactsScreen = () => {
           />
         </Row>
       </HeaderAccessory>
+
       {!enabled && peopleSearched?.length > 0 && <RecentSearch />}
+
       {enabled && (
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
@@ -65,13 +125,13 @@ export const ContactsScreen = () => {
                 style={{ marginTop: spacing[4] }}
                 emptyStateText={t('contactsScreen.emptyState')}
               >
-                {people?.map((person, index) => (
+                {sortedPeople?.map((person, index) => (
                   <PersonOverviewListItem
                     key={person.id}
                     person={person}
                     searchString={debounceSearch}
                     index={index}
-                    totalData={people?.length || 0}
+                    totalData={sortedPeople?.length || 0}
                   />
                 ))}
               </OverviewList>
@@ -93,6 +153,8 @@ const createStyles = ({ spacing, shapes }: Theme) =>
     searchBar: {
       paddingBottom: spacing[2],
       paddingTop: spacing[2],
+      backgroundColor: '#fff',
+      zIndex: 1,
     },
     searchIcon: {
       position: 'absolute',

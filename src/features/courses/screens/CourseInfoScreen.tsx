@@ -264,15 +264,13 @@ export const CourseInfoScreen = () => {
             {(() => {
               const c = (courseQuery.data as any) ?? {};
               const details: Array<{ key: string; label: string; value?: string }> = [
+                { key: 'Course Title', label: 'Course Title', value: c.title },
                 { key: 'description', label: 'Description', value: c.description },
                 { key: 'prerequisites', label:  'Prerequisites', value: c.prerequisites },
                 { key: 'assessment_info', label:  'Assessment', value: c.assessment_info },
                 { key: 'reading_materials', label:   'Reading materials', value: c.reading_materials },
                 { key: 'category', label:  'Category', value: c.category },
-                { key: 'academic_year', label: 'Year', value: c.academic_year ?? c.year },
-                { key: 'semester', label:  'Semester', value: c.semester ?? c.teaching_period },
-                { key: 'start_date', label: 'Start date', value: c.start_date },
-                { key: 'end_date', label:  'End date', value: c.end_date },
+
               ].filter(i => !!i.value);
 
               return details.length

@@ -70,19 +70,19 @@ export const ServicesScreen = () => {
 
   const services = useMemo(() => {
     return [
-      {
-        id: 'tickets',
-        name: t('ticketsScreen.title'),
-        icon: faComments,
-        disabled:
-          isOffline &&
-          queryClient.getQueryData(TICKETS_QUERY_KEY) === undefined,
-        linkTo: { screen: 'Tickets' },
-        unReadCount: unreadTickets,
-        accessibilityLabel: `${t('ticketsScreen.title')} ${
-          unreadTickets ? t('servicesScreen.newElement') : ''
-        }`,
-      },
+      // {
+      //   id: 'tickets',
+      //   name: t('ticketsScreen.title'),
+      //   icon: faComments,
+      //   disabled:
+      //     isOffline &&
+      //     queryClient.getQueryData(TICKETS_QUERY_KEY) === undefined,
+      //   linkTo: { screen: 'Tickets' },
+      //   unReadCount: unreadTickets,
+      //   accessibilityLabel: `${t('ticketsScreen.title')} ${
+      //     unreadTickets ? t('servicesScreen.newElement') : ''
+      //   }`,
+      // },
       // {
       //   id: 'appFeedback',
       //   name: t('common.appFeedback'),
@@ -145,34 +145,34 @@ export const ServicesScreen = () => {
         linkTo: { screen: 'Contacts' },
         accessibilityLabel: t('contactsScreen.title'),
       },
-      {
-        id: 'guides',
-        name: t('guidesScreen.title'),
-        icon: faSignsPost,
-        linkTo: { screen: 'Guides' },
-        unReadCount: emailGuideRead ? 0 : 1,
-        accessibilityLabel: `${t('guidesScreen.title')} ${
-          !emailGuideRead ? t('servicesScreen.newElement') : ''
-        }`,
-      },
-      {
-        id: 'bookings',
-        name: t('bookingsScreen.title'),
-        icon: faPersonCirclePlus,
-        disabled:
-          isOffline &&
-          queryClient.getQueryData(BOOKINGS_QUERY_KEY) === undefined,
-        linkTo: { screen: 'Bookings' },
-        accessibilityLabel: t('bookingsScreen.title'),
-      },
-      {
-        id: 'surveys',
-        name: t('surveysScreen.title'),
-        icon: faClipboardQuestion,
-        disabled: isOffline,
-        linkTo: { screen: 'Surveys' },
-        accessibilityLabel: t('surveysScreen.title'),
-      },
+      // {
+      //   id: 'guides',
+      //   name: t('guidesScreen.title'),
+      //   icon: faSignsPost,
+      //   linkTo: { screen: 'Guides' },
+      //   unReadCount: emailGuideRead ? 0 : 1,
+      //   accessibilityLabel: `${t('guidesScreen.title')} ${
+      //     !emailGuideRead ? t('servicesScreen.newElement') : ''
+      //   }`,
+      // },
+      // {
+      //   id: 'bookings',
+      //   name: t('bookingsScreen.title'),
+      //   icon: faPersonCirclePlus,
+      //   disabled:
+      //     isOffline &&
+      //     queryClient.getQueryData(BOOKINGS_QUERY_KEY) === undefined,
+      //   linkTo: { screen: 'Bookings' },
+      //   accessibilityLabel: t('bookingsScreen.title'),
+      // },
+      // {
+      //   id: 'surveys',
+      //   name: t('surveysScreen.title'),
+      //   icon: faClipboardQuestion,
+      //   disabled: isOffline,
+      //   linkTo: { screen: 'Surveys' },
+      //   accessibilityLabel: t('surveysScreen.title'),
+      // },
       // {
       //   id: 'mail',
       //   name: 'WebMail',

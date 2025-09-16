@@ -12,7 +12,6 @@ import { Icon } from '@lib/ui/components/Icon';
 import { ListItem } from '@lib/ui/components/ListItem';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { PersonOverview } from '../../lib/api-client';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,11 +20,18 @@ import { MAX_RECENT_SEARCHES } from '../../../core/constants';
 import { usePreferencesContext } from '../../../core/contexts/PreferencesContext';
 import { useAccessibility } from '../../../core/hooks/useAccessibilty';
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
-import { getPersonKey } from '../../../core/queries/peopleHooks';
 import { HighlightedText } from './HighlightedText';
 
 interface Props {
-  person: PersonOverview;
+  person: {
+    id: string;
+    name: string;
+    surname: string;
+    role_type: string;
+    email?: string;
+    phone_number?: string;
+    picture?: string; // In case your API returns profile picture later
+  };
   searchString?: string;
   trailingItem?: ReactElement;
   index: number;
@@ -48,10 +54,10 @@ export const PersonOverviewListItem = ({
   const { accessibilityListLabel } = useAccessibility();
   const { updatePreference, peopleSearched } = usePreferencesContext();
   const accessibilityLabel = accessibilityListLabel(index, totalData);
-  const subtitle = person.role ?? '';
-  const firstName = person?.firstName ?? '';
-  const lastName = person?.lastName ?? '';
-  const title = [firstName, lastName].join(' ').trim();
+
+  // ✅ Adapted for new API fields
+  const title = `${person.name ?? ''} ${person.surname ?? ''}`.trim();
+  const subtitle = person.role_type ?? '';
 
   const navigateToPerson = () => {
     const personIndex = peopleSearched.findIndex(p => p.id === person.id);
@@ -69,12 +75,14 @@ export const PersonOverviewListItem = ({
 
   const queryClient = useQueryClient();
 
+  // You can remove this if you no longer use React Query for people
   const isDataMissing = useCallback(
-    () => queryClient.getQueryData(getPersonKey(person!.id)) === undefined,
-    [person, queryClient],
+    () => queryClient.getQueryData(['person', person.id]) === undefined,
+    [person.id, queryClient],
   );
 
   const isDisabled = useOfflineDisabled(isDataMissing);
+
   return (
     <ListItem
       onPress={navigateToPerson}
