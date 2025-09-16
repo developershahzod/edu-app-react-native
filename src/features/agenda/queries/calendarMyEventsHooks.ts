@@ -32,7 +32,7 @@ function mapCalendarEventToAgendaItem(evt: any): AgendaItem | null {
   const startTimestamp = startDT.toJSDate().valueOf();
 
   const common = {
-    id: String(evt.id ?? `${date}-${evt.title ?? 'event'}`),
+    id: evt.id ? (typeof evt.id === 'number' ? evt.id : parseInt(String(evt.id), 10) || startTimestamp) : startTimestamp,
     key: (evt.type ? `${evt.type}-` : 'event-') + String(evt.id ?? startTimestamp),
     date,
     start: startDT,
@@ -40,7 +40,7 @@ function mapCalendarEventToAgendaItem(evt: any): AgendaItem | null {
     startTimestamp,
     fromTime: formatHHmm(startDT.toJSDate()),
     toTime: formatHHmm(endDT.toJSDate()),
-    title: evt.title ?? evt.course_name ?? 'Event',
+    title: evt.title ?? evt.course_title ?? evt.course_name ?? 'Event',
   };
 
   const lowerType = String(evt.type ?? '').toLowerCase();
@@ -128,24 +128,37 @@ function getWeekKey(prefix: string, startDate: DateTime) {
 
 async function fetchWeek(calendarApi: CalendarApi, monday: DateTime): Promise<AgendaWeek> {
   const until = monday.plus({ week: 1 });
-  const res = (await calendarApi.getMyEvents({
-    fromDate: monday.toISO()!,
-    toDate: until.toISO()!,
-  })) as ApiResponse<any[]>;
+  
+  try {
+    const res = await calendarApi.getMyEvents({
+      fromDate: monday.toISO()!,
+      toDate: until.toISO()!,
+    });
 
-  const items: AgendaItem[] = [];
-  for (const evt of res?.data ?? []) {
-    const mapped = mapCalendarEventToAgendaItem(evt);
-    if (mapped) items.push(mapped);
+    const items: AgendaItem[] = [];
+    const events = res?.data ?? [];
+    
+    for (const evt of events) {
+      const mapped = mapCalendarEventToAgendaItem(evt);
+      if (mapped) items.push(mapped);
+    }
+
+    const days = groupItemsByDay(items, monday.equals(DateTime.now().startOf('week')));
+
+    return {
+      key: monday.toSQLDate()!,
+      dateRange: Interval.fromDateTimes(monday, until),
+      data: days,
+    };
+  } catch (error) {
+    console.error('Error fetching calendar events:', error);
+    // Return empty week on error
+    return {
+      key: monday.toSQLDate()!,
+      dateRange: Interval.fromDateTimes(monday, until),
+      data: [],
+    };
   }
-
-  const days = groupItemsByDay(items, monday.equals(DateTime.now().startOf('week')));
-
-  return {
-    key: monday.toSQLDate()!,
-    dateRange: Interval.fromDateTimes(monday, until),
-    data: days,
-  };
 }
 
 /**
@@ -157,7 +170,11 @@ export function useGetAgendaWeekFromCalendar(monday: DateTime = DateTime.now().s
     queryKey: getWeekKey(AGENDA_CAL_QUERY_PREFIX, monday),
     queryFn: () => fetchWeek(calendarApi, monday),
     staleTime: 300000,
-    networkMode: 'always',
+    networkMode: 'always' as const,
+    retry: 3,
+    retryDelay: 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -172,6 +189,9 @@ export function useGetAgendaWeeksFromCalendar(mondays: DateTime[]) {
       queryKey: getWeekKey(AGENDA_CAL_QUERY_PREFIX, monday),
       queryFn: () => fetchWeek(calendarApi, monday),
       staleTime: 300000,
+      networkMode: 'always' as const,
+      retry: 3,
+      retryDelay: 1000,
     })),
   });
 

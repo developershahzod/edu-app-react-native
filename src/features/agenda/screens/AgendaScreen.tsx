@@ -39,7 +39,7 @@ import { DEADLINES_QUERY_PREFIX } from '../../../core/queries/studentHooks';
 import { AgendaFilters } from '../components/AgendaFilters';
 import { AgendaStackParamList } from '../components/AgendaNavigator';
 import { WeeklyAgenda } from '../components/WeeklyAgenda';
-import { AGENDA_QUERY_PREFIX, useGetAgendaWeeks } from '../queries/agendaHooks';
+import { useGetAgendaWeeksFromCalendar, AGENDA_CAL_QUERY_PREFIX } from '../queries/calendarMyEventsHooks';
 import { LECTURES_QUERY_PREFIX } from '../queries/lectureHooks';
 import { AgendaOption } from '../types/AgendaOption';
 import { AgendaState } from '../types/AgendaState';
@@ -69,7 +69,7 @@ export const AgendaScreen = ({ navigation, route }: Props) => {
     selectedDate.startOf('week'),
   ]);
 
-  const { isLoading, data } = useGetAgendaWeeks(weeks);
+  const { isLoading, data } = useGetAgendaWeeksFromCalendar(weeks);
 
   const [dataPickerIsOpened, setDataPickerIsOpened] = useState<boolean>(false);
 
@@ -97,17 +97,13 @@ export const AgendaScreen = ({ navigation, route }: Props) => {
 
   const refreshQueries = useCallback(() => {
     const dependingQueryKeys = [
-      EXAMS_QUERY_KEY,
-      BOOKINGS_QUERY_KEY,
-      [LECTURES_QUERY_PREFIX],
-      [DEADLINES_QUERY_PREFIX],
+      [AGENDA_CAL_QUERY_PREFIX],
     ];
 
     setAgendaState(prev => ({ ...prev, isRefreshing: true }));
     Promise.all(
       dependingQueryKeys.map(q => client.invalidateQueries({ queryKey: q })),
     )
-      .then(_ => client.invalidateQueries({ queryKey: [AGENDA_QUERY_PREFIX] }))
       .then(_ => setAgendaState(prev => ({ ...prev, isRefreshing: false })));
   }, [client, setAgendaState]);
 

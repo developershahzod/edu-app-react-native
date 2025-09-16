@@ -379,25 +379,6 @@ export const CourseInfoScreen = () => {
           </OverviewList>
         </Section>
 
-        {/* Students placeholder */}
-        <Section>
-          <SectionHeader title={'Students'} />
-          <OverviewList
-            indented
-            loading={false}
-            emptyStateText={t('courseInfoTab.studentsEmptyState') ?? 'No students data available.'}
-          >
-            {/* Placeholder static list */}
-            <PersonListItem
-              person={{ id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' }}
-              subtitle="Student"
-            />
-            <PersonListItem
-              person={{ id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com' }}
-              subtitle="Student"
-            />
-          </OverviewList>
-        </Section>
 
         {/* Staff */}
         <Section>

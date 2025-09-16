@@ -23,7 +23,7 @@ export const BookingCard = ({ item, compact = false }: Props) => {
       type={t('common.booking')}
       color={colors.bookingCardBorder}
       isCompact={compact}
-      time={`${item.fromTime} - ${item.toTime}`}
+      time={`..`}
       onPress={() =>
         navigate({
           name: 'Booking',

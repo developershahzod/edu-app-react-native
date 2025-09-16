@@ -69,24 +69,9 @@ export const AgendaNavigator = () => {
         },
         ...useTitlesStyles(theme),
       }}
-      initialRouteName={layout === 'daily' ? 'Agenda' : 'AgendaWeek'}
+      initialRouteName={'AgendaWeek'}
     >
-      <Stack.Screen
-        name="Agenda"
-        component={AgendaScreen}
-        options={({ route: { params } }) => ({
-          headerLargeTitle: false,
-          headerLeft: () => <HeaderLogo />,
-          headerTitle: t('agendaScreen.title'),
-          headerTransparent: false,
-          headerShadowVisible: false,
-          headerBackButtonDisplayMode: 'minimal',
-          headerLargeStyle: {
-            backgroundColor: colors.headersBackground,
-          },
-          animation: (params?.animated ?? true) ? 'default' : 'none',
-        })}
-      />
+     
       <Stack.Screen
         name="AgendaWeek"
         component={AgendaWeekScreen}

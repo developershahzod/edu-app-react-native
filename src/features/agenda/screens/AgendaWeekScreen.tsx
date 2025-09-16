@@ -1,382 +1,363 @@
-// AgendaWeekScreen.tsx
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import DatePicker from 'react-native-date-picker';
+// AgendaWeekScreen.tsx (redesigned)
+// Modern, compact, and consistent UI for a weekly timetable
 
-import {
-  faCalendarDay,
-  faEllipsisVertical,
-} from '@fortawesome/free-solid-svg-icons';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View, Text, ScrollView, Dimensions, FlatList } from 'react-native';
+import DatePicker from 'react-native-date-picker';
+import { faCalendarDay, faChevronLeft, faChevronRight, faEllipsisVertical } from '@fortawesome/free-solid-svg-icons';
 import { ActivityIndicator } from '@lib/ui/components/ActivityIndicator';
 import { HeaderAccessory } from '@lib/ui/components/HeaderAccessory';
 import { IconButton } from '@lib/ui/components/IconButton';
 import { Tabs } from '@lib/ui/components/Tabs';
-import { Calendar } from '@lib/ui/components/calendar/Calendar';
-import { CalendarHeader } from '@lib/ui/components/calendar/CalendarHeader';
 import { useStylesheet } from '@lib/ui/hooks/useStylesheet';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { WeekNum } from '@lib/ui/types/Calendar.ts';
-import { Theme } from '@lib/ui/types/Theme';
-import { HOURS } from '@lib/ui/utils/calendar';
 import { MenuView, NativeActionEvent } from '@react-native-menu/menu';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-
 import { DateTime, IANAZone } from 'luxon';
 
 import { usePreferencesContext } from '../../../core/contexts/PreferencesContext';
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
 import { AgendaStackParamList } from '../components/AgendaNavigator';
 import { AgendaTypeFilter } from '../components/AgendaTypeFilter';
-import { BookingCard } from '../components/BookingCard';
-import { DeadlineCard } from '../components/DeadlineCard';
-import { ExamCard } from '../components/ExamCard';
-import { LectureCard } from '../components/LectureCard';
 import { WeekFilter } from '../components/WeekFilter';
-import { useProcessedLectures } from '../hooks/useProcessedLectures.ts';
-import {
-  AGENDA_CAL_QUERY_PREFIX,
-  useGetAgendaWeekFromCalendar,
-} from '../queries/calendarMyEventsHooks';
-import { AgendaItem } from '../types/AgendaItem';
+import { AGENDA_CAL_QUERY_PREFIX } from '../queries/calendarMyEventsHooks';
 import { AgendaOption } from '../types/AgendaOption';
 import { useGetMyEvents } from '~/core/queries/calendarHooks.ts';
 
 type Props = NativeStackScreenProps<AgendaStackParamList, 'AgendaWeek'>;
 
-export const AgendaWeekScreen = ({ navigation, route }: Props) => {
-  const styles = useStylesheet(createStyles);
-  const queryClient = useQueryClient();
+interface ProcessedEvent {
+  id: string;
+  title: string;
+  description: string;
+  start: DateTime;
+  end: DateTime;
+  color: string;
+  allDay: boolean;
+  course?: { id: string; title: string } | null;
+}
 
+const { width: screenWidth } = Dimensions.get('window');
+const DAY_COLUMN_MIN = Math.max(screenWidth / 7, 120);
+
+// ---- Small pure helpers ----
+const clamp = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
+
+// ---- Event Card ----
+const EventCard = ({ event, compact, onPress }: { event: ProcessedEvent; compact?: boolean; onPress?: () => void }) => {
+  const { palettes, fontSizes } = useTheme();
+
+  const durationMillis = event.end.toMillis() - event.start.toMillis();
+  const hours = Math.round(durationMillis / (1000 * 60 * 60));
+
+  const typeBackground = useMemo(() => {
+    // small palette by course title (fallback to color)
+    const title = event.course?.title?.toLowerCase() ?? '';
+    if (title.includes('program')) return { bg: '#f0f9ff', border: '#0ea5e9' };
+    if (title.includes('web')) return { bg: '#f0fdf4', border: '#22c55e' };
+    if (title.includes('database')) return { bg: '#fef3c7', border: '#f59e0b' };
+    if (title.includes('design')) return { bg: '#fdf2f8', border: '#ec4899' };
+    return { bg: '#ffffff', border: event.color || '#3b82f6' };
+  }, [event.course, event.color]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+    
+      style={[localStyles.eventCard, { backgroundColor: typeBackground.bg, borderLeftColor: typeBackground.border }, compact && localStyles.eventCardCompact]}
+    >
+      <View style={localStyles.eventTopRow}>
+        <Text numberOfLines={2} style={[localStyles.eventTitle, compact ? localStyles.eventTitleCompact : {}]}>
+          {event.title}
+        </Text>
+        <View style={[localStyles.statusDot, { backgroundColor: event.color }]} />
+      </View>
+
+      {!compact && event.course?.title ? (
+        <View style={localStyles.courseLine}>
+          <View style={localStyles.coursePill}>
+            <Text style={localStyles.courseText} numberOfLines={1}>{event.course.title}</Text>
+          </View>
+          <Text style={localStyles.metaText}>{event.allDay ? 'All day' : `${event.start.toFormat('HH:mm')} — ${event.end.toFormat('HH:mm')}`}</Text>
+        </View>
+      ) : (
+        <Text style={localStyles.metaTextCompact}>{event.allDay ? 'All day' : event.start.toFormat('HH:mm')}</Text>
+      )}
+
+      {event.description ? <Text numberOfLines={compact ? 1 : 3} style={localStyles.description}>{event.description}</Text> : null}
+
+      <View style={localStyles.eventFooter}>
+        <Text style={localStyles.durationText}>{hours <= 0 ? '<1h' : `${hours}h`}</Text>
+        <Text style={localStyles.whenText}>{event.start.toFormat('MMM d')}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// ---- Day Column ----
+const DayColumn = ({ date, events, isToday }: { date: DateTime; events: ProcessedEvent[]; isToday: boolean }) => {
+  const { palettes, colors } = useTheme();
+  const isWeekend = date.weekday === 6 || date.weekday === 7;
+
+  return (
+    <View style={[localStyles.dayColumn, isToday && { borderColor: palettes.primary[500], borderWidth: 1.5 }, isWeekend && { backgroundColor: colors.surfaceVariant }]}>
+      <View style={localStyles.dayHeaderCompact}>
+        <Text style={[localStyles.dayNameCompact, isToday && { color: palettes.primary[700] }]}>{date.toFormat('ccc')}</Text>
+        <View style={localStyles.dayNumberWrap}>
+          <Text style={[localStyles.dayNumberCompact, isToday && { color: palettes.primary[700], fontWeight: '800' }]}>{date.toFormat('d')}</Text>
+          {isToday && <View style={[localStyles.todayDot, { backgroundColor: palettes.primary[500] }]} />}
+        </View>
+      </View>
+
+      {events.length === 0 ? (
+        <View style={localStyles.emptyDayCenter}>
+ 
+          <Text style={localStyles.emptyText}>{isToday ? 'Clear schedule' : 'No events'}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={events}
+          keyExtractor={(it) => it.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={localStyles.eventsList}
+          renderItem={({ item, index }) => (
+            <View style={[localStyles.eventWrapper, index === events.length - 1 && { marginBottom: 12 }]}>
+              <EventCard event={item} compact={events.length > 4} onPress={() => console.log('open', item.id)} />
+            </View>
+          )}
+        />
+      )}
+    </View>
+  );
+};
+
+export const AgendaWeekScreen = ({ navigation, route }: Props) => {
+  const styles = useStylesheet((t: any) => createStyles(t));
+  const { palettes, fontSizes } = useTheme();
+  const queryClient = useQueryClient();
   const { updatePreference, agendaScreen } = usePreferencesContext();
-  const { language, accessibility } = usePreferencesContext();
-  const { t } = useTranslation();
-  const { palettes, fontSizes, colors } = useTheme();
+  const { language } = usePreferencesContext();
 
   const { params } = route;
-  const date = params?.date ? DateTime.fromISO(params.date) : DateTime.now();
-  const today = useMemo(() => new Date(), []);
-  const todayDateTime = useMemo(
-    () => DateTime.fromJSDate(today, { zone: IANAZone.create('Europe/Rome') }),
-    [today],
-  );
+  const initialDate = params?.date ? DateTime.fromISO(params.date) : DateTime.now();
+  const [currentWeek, setCurrentWeek] = useState(() => initialDate.startOf('week'));
+  const [selectedDate, setSelectedDate] = useState(() => initialDate);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
-  const [currentWeek, setCurrentWeek] = useState<DateTime>(
-    date ? date.startOf('week') : DateTime.now().startOf('week'),
-  );
+  const { data: weekData, isLoading: isFetching, refetch, error } = useGetMyEvents();
 
-  const [selectedDate, setSelectedDate] = useState<DateTime>(
-    date ?? DateTime.now(),
-  );
-
-  const [dataPickerIsOpened, setDataPickerIsOpened] = useState<boolean>(false);
-
-  // ✅ Fetch my-events from API
-  const {
-    data: weekData,
-    isLoading: isFetching,
-    refetch,
-  } = useGetMyEvents();
-
-  // ✅ Safe extraction of events (flat array)
-  const allEvents = useMemo(() => {
-    return Array.isArray(weekData?.data) ? weekData.data : [];
-  }, [weekData?.data]);
-
-  // ✅ Filter events by currentWeek
-  const calendarData = useMemo(() => {
-    return allEvents.filter(event => {
-      if (!event?.start) return false;
-      const eventDate = DateTime.fromISO(event.start);
-      return eventDate >= currentWeek.startOf('week') &&
-             eventDate < currentWeek.plus({ weeks: 1 }).startOf('week');
-    });
-  }, [allEvents, currentWeek]);
-
-  // Determine the maximum weekday to decide week length
-  const calendarMax = useMemo(() => {
-    return (
-      calendarData.reduce((max, item) => {
-        const eventDate = DateTime.fromISO(item.start);
-        return eventDate.weekday > DateTime.fromISO(max.start).weekday ? item : max;
-      }, calendarData[0]) ?? null
-    );
-  }, [calendarData]);
-
-  const filteredCalendarData = useProcessedLectures(calendarData);
-
-  const weekLength = useMemo(() => {
-    if (calendarMax) {
-      const weekday = DateTime.fromISO(calendarMax.start).weekday;
-      if (weekday > 5) return weekday as WeekNum;
+  // process events once
+  const processedEvents = useMemo(() => {
+    const arr: any[] = [];
+    if (!weekData) return [] as ProcessedEvent[];
+    if (Array.isArray(weekData)) arr.push(...weekData);
+    else if (Array.isArray(weekData.data)) arr.push(...weekData.data);
+    else {
+      const possible = Object.values(weekData).find(Array.isArray);
+      if (possible) arr.push(...(possible as any[]));
     }
-    return 5;
-  }, [calendarMax]);
 
-  const getNextWeek = useCallback(() => {
-    setCurrentWeek(w => {
-      const nextWeek = w.plus({ days: 7 });
-      if (nextWeek.startOf('week').equals(todayDateTime.startOf('week'))) {
-        setSelectedDate(todayDateTime);
-      } else {
-        setSelectedDate(nextWeek);
-      }
-      return nextWeek;
+    return arr.map((ev: any) => {
+      const start = DateTime.fromISO(ev.start);
+      const end = ev.end ? DateTime.fromISO(ev.end) : (ev.allDay ? start.endOf('day') : start.plus({ hours: 1 }));
+      return {
+        id: String(ev.id),
+        title: ev.title || ev.summary || 'Untitled',
+        description: ev.description || ev.extendedProps?.description || '',
+        start,
+        end,
+        color: ev.color || '#3b82f6',
+        allDay: !!ev.allDay,
+        course: ev.extendedProps ? { id: ev.extendedProps.course_id || '', title: ev.extendedProps.course_title || '' } : null,
+      } as ProcessedEvent;
     });
-  }, [todayDateTime]);
+  }, [weekData]);
 
-  const getPrevWeek = useCallback(() => {
-    setCurrentWeek(w => {
-      const prevWeek = w.minus({ days: 7 });
-      if (prevWeek.startOf('week').equals(todayDateTime.startOf('week'))) {
-        setSelectedDate(todayDateTime);
-      } else {
-        setSelectedDate(prevWeek);
-      }
-      return prevWeek;
-    });
-  }, [todayDateTime]);
+  const weekDates = useMemo(() => {
+    const s = currentWeek.startOf('week');
+    return Array.from({ length: 7 }, (_, i) => s.plus({ days: i }));
+  }, [currentWeek]);
 
-  const getSelectedWeek = useCallback((newDateJS: Date) => {
-    setDataPickerIsOpened(false);
-    const newDate = DateTime.fromJSDate(newDateJS, {
-      zone: IANAZone.create('Europe/Rome'),
+  const eventsByDay = useMemo(() => {
+    const grouped: Record<string, ProcessedEvent[]> = {};
+    weekDates.forEach(d => grouped[d.toISODate()] = []);
+    processedEvents.forEach(ev => {
+      const key = ev.start.toISODate();
+      if (grouped[key]) grouped[key].push(ev);
     });
-    const selectedWeek = newDate.startOf('week');
-    setCurrentWeek(selectedWeek);
-    setSelectedDate(newDate);
+    Object.values(grouped).forEach(list => list.sort((a, b) => a.start.toMillis() - b.start.toMillis()));
+    return grouped;
+  }, [processedEvents, weekDates]);
+
+  const getNextWeek = useCallback(() => setCurrentWeek(w => w.plus({ days: 7 })), []);
+  const getPrevWeek = useCallback(() => setCurrentWeek(w => w.minus({ days: 7 })), []);
+
+  const onSelectDate = useCallback((jsDate: Date) => {
+    const dt = DateTime.fromJSDate(jsDate, { zone: IANAZone.create('Europe/Rome') });
+    setDatePickerOpen(false);
+    setCurrentWeek(dt.startOf('week'));
+    setSelectedDate(dt);
   }, []);
 
-  const [calendarHeight, setCalendarHeight] = useState<number | undefined>(
-    undefined,
-  );
-
-  const screenOptions = useMemo<AgendaOption[]>(
-    () => [
-      {
-        id: 'refresh',
-        title: t('agendaScreen.refresh'),
-      },
-      {
-        id: 'daily',
-        title: t('agendaScreen.dailyLayout'),
-      },
-    ],
-    [t],
-  );
+  const screenOptions = useMemo<AgendaOption[]>(() => [
+    { id: 'refresh', title: 'Refresh' },
+  ], []);
 
   useLayoutEffect(() => {
-    const switchToDaily = () => {
-      updatePreference('agendaScreen', {
-        ...agendaScreen,
-        layout: 'daily',
-      });
-      navigation.replace('Agenda', {
-        date: selectedDate.toISODate() ?? '',
-      });
-    };
-
-    const onPressOption = ({ nativeEvent: { event } }: NativeActionEvent) => {
-      switch (event) {
-        case 'daily':
-          switchToDaily();
-          break;
-        case 'refresh':
-          refetch();
-          break;
+    const onPressAction = ({ nativeEvent: { event } }: NativeActionEvent) => {
+      if (event === 'refresh') refetch();
+      if (event === 'daily') {
+        updatePreference('agendaScreen', { ...agendaScreen, layout: 'daily' });
+        navigation.replace('Agenda', { date: selectedDate.toISODate() });
       }
     };
 
     navigation.setOptions({
       headerRight: () => (
-        <>
-          <IconButton
-            icon={faCalendarDay}
-            color={palettes.primary[400]}
-            size={fontSizes.lg}
-            adjustSpacing="left"
-            accessibilityLabel={t('agendaScreen.selectDate')}
-            onPress={() => setDataPickerIsOpened(true)}
-          />
-          <MenuView actions={screenOptions} onPressAction={onPressOption}>
-            <IconButton
-              icon={faEllipsisVertical}
-              color={palettes.primary[400]}
-              size={fontSizes.lg}
-              adjustSpacing="right"
-              accessibilityLabel={t('common.options')}
-            />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <IconButton icon={faCalendarDay} onPress={() => setDatePickerOpen(true)} />
+          <MenuView actions={screenOptions} onPressAction={onPressAction}>
+            <IconButton icon={faEllipsisVertical} />
           </MenuView>
-        </>
+        </View>
       ),
     });
-  }, [
-    palettes.primary,
-    fontSizes.lg,
-    navigation,
-    t,
-    agendaScreen,
-    selectedDate,
-    refetch,
-    screenOptions,
-    updatePreference,
-  ]);
+  }, [navigation, screenOptions, refetch, updatePreference, agendaScreen, selectedDate]);
 
-  const isPrevMissing = useCallback(
-    () =>
-      queryClient.getQueryData([
-        AGENDA_CAL_QUERY_PREFIX,
-        currentWeek.minus({ week: 1 }).toISODate(),
-      ]) === undefined,
-    [currentWeek, queryClient],
-  );
-
-  const isNextMissing = useCallback(
-    () =>
-      queryClient.getQueryData([
-        AGENDA_CAL_QUERY_PREFIX,
-        currentWeek.plus({ week: 1 }).toISODate(),
-      ]) === undefined,
-    [currentWeek, queryClient],
-  );
-
+  const queryClientRef = useQueryClient();
+  const isPrevMissing = useCallback(() => queryClientRef.getQueryData([AGENDA_CAL_QUERY_PREFIX, currentWeek.minus({ weeks: 1 }).toISODate()]) === undefined, [currentWeek, queryClientRef]);
+  const isNextMissing = useCallback(() => queryClientRef.getQueryData([AGENDA_CAL_QUERY_PREFIX, currentWeek.plus({ weeks: 1 }).toISODate()]) === undefined, [currentWeek, queryClientRef]);
   const isPrevWeekDisabled = useOfflineDisabled(isPrevMissing);
   const isNextWeekDisabled = useOfflineDisabled(isNextMissing);
 
+  const totalEvents = processedEvents.length;
+  const weekEventsCount = Object.values(eventsByDay).flat().length;
+
   return (
-    <>
-      <HeaderAccessory
-        justify="space-between"
-        style={[
-          styles.headerContainer,
-          accessibility?.fontSize && Number(accessibility?.fontSize) > 150
-            ? { flexDirection: 'column' }
-            : {},
-        ]}
-      >
-        <Tabs contentContainerStyle={styles.tabs}>
-          <AgendaTypeFilter />
-        </Tabs>
-        <WeekFilter
-          current={currentWeek}
-          getNext={getNextWeek}
-          getPrev={getPrevWeek}
-          isNextWeekDisabled={isNextWeekDisabled}
-          isPrevWeekDisabled={isPrevWeekDisabled}
-        />
+    <View style={styles.container}>
+      <HeaderAccessory justify="space-between" style={styles.headerRow}>
+        <Tabs contentContainerStyle={styles.tabs}><AgendaTypeFilter /></Tabs>
+
+        <View style={styles.weekControls}>
+          {/* <TouchableOpacity style={styles.navButton} onPress={getPrevWeek}>
+            <IconButton icon={faChevronLeft} />
+          </TouchableOpacity> */}
+
+          <View style={styles.weekLabelWrap}>
+            <Text style={styles.weekLabel}>{currentWeek.toFormat('MMM d')}</Text>
+            <Text style={styles.weekSubLabel}>{`${weekDates[0].toFormat('d')} — ${weekDates[6].toFormat('d, MMM yyyy')}`}</Text>
+          </View>
+
+          {/* <TouchableOpacity style={styles.navButton} onPress={getNextWeek}>
+            <IconButton icon={faChevronRight} />
+          </TouchableOpacity> */}
+        </View>
       </HeaderAccessory>
 
-      <DatePicker
-        modal
-        locale={language}
-        date={today}
-        mode="date"
-        open={dataPickerIsOpened}
-        onConfirm={getSelectedWeek}
-        onCancel={() => setDataPickerIsOpened(false)}
-        title={t('agendaScreen.selectDate')}
-        confirmText={t('common.confirm')}
-        cancelText={t('common.cancel')}
-      />
+      <DatePicker modal locale={language} date={new Date()} mode="date" open={datePickerOpen} onConfirm={onSelectDate} onCancel={() => setDatePickerOpen(false)} />
 
-      <View
-        style={styles.calendarContainer}
-        onLayout={e => {
-          const { height } = e.nativeEvent.layout;
-          setCalendarHeight(height);
-        }}
-      >
-        {!calendarHeight ||
-          (isFetching && (
-            <ActivityIndicator size="large" style={styles.loader} />
-          ))}
-
-        {calendarHeight && (
-          <Calendar<AgendaItem>
-            events={filteredCalendarData}
-            headerContentStyle={styles.dayHeader}
-            weekDayHeaderHighlightColor={colors.background}
-            date={currentWeek}
-            mode="custom"
-            height={calendarHeight}
-            hours={HOURS}
-            locale={language}
-            startHour={8}
-            swipeEnabled={false}
-            renderHeader={props => (
-              <CalendarHeader {...props} cellHeight={-1} />
-            )}
-            renderEvent={(item: AgendaItem, touchableOpacityProps, key) => {
-              return (
-                <TouchableOpacity
-                  key={key}
-                  {...touchableOpacityProps}
-                  style={[touchableOpacityProps.style, styles.event]}
-                >
-                  {item.type === 'booking' && (
-                    <BookingCard key={item.key} item={item} compact={true} />
-                  )}
-                  {item.type === 'deadline' && (
-                    <DeadlineCard key={item.key} item={item} compact={true} />
-                  )}
-                  {item.type === 'exam' && (
-                    <ExamCard key={item.key} item={item} compact={true} />
-                  )}
-                  {item.type === 'lecture' && (
-                    <LectureCard key={item.key} item={item} compact={true} />
-                  )}
-                </TouchableOpacity>
-              );
-            }}
-            weekStartsOn={1}
-            weekEndsOn={weekLength}
-            isEventOrderingEnabled={false}
-            overlapOffset={10000}
-          />
-        )}
+      <View style={styles.debugStrip}>
+        <Text style={styles.debugText}>Week: {currentWeek.toFormat('DD')} • {totalEvents} total • {weekEventsCount} this week</Text>
+        {error && <Text style={styles.debugError}>Error: {String((error as any)?.message || error)}</Text>}
       </View>
-    </>
+
+      {isFetching ? (
+        <ActivityIndicator size="large" style={styles.loader} />
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekScroll}>
+          {weekDates.map(d => (
+            <View key={d.toISODate()} style={{ minWidth: DAY_COLUMN_MIN }}>
+              <DayColumn date={d} events={eventsByDay[d.toISODate()] || []} isToday={d.hasSame(DateTime.now(), 'day')} />
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {!isFetching && totalEvents === 0 && (
+        <View style={styles.emptyState}> 
+          <Text style={styles.emptyStateTitle}>No events this week</Text>
+          <Text style={styles.emptyStateSubtitle}>{error ? `Error: ${(error as any)?.message}` : 'Try refreshing or choose another week'}</Text>
+        </View>
+      )}
+    </View>
   );
 };
 
-const createStyles = ({ spacing }: Theme) =>
-  StyleSheet.create({
-    tabs: {
-      alignItems: 'center',
-    },
-    headerContainer: {
-      paddingVertical: spacing[2],
-      paddingLeft: spacing[4],
-    },
-    container: {
-      display: 'flex',
-      flexDirection: 'row',
-      gap: spacing[2],
-    },
-    calendarContainer: {
-      height: '100%',
-      width: '100%',
-    },
-    dayHeader: {
-      display: 'flex',
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    event: {
-      backgroundColor: undefined,
-      shadowColor: undefined,
-      shadowOffset: undefined,
-      shadowOpacity: undefined,
-      shadowRadius: undefined,
-      elevation: undefined,
-    },
-    loader: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      bottom: 0,
-      right: 0,
-    },
-  });
+// ---- Styles ----
+const createStyles = ({ spacing, colors, palettes, fontWeights, fontSizes, shapes }: any) => ({
+  container: { flex: 1, backgroundColor: colors.background },
+  headerRow: { padding: spacing[2], paddingHorizontal: spacing[3], backgroundColor: colors.surface, borderBottomColor: colors.divider, borderBottomWidth: 1 },
+  tabs: { alignItems: 'center' },
+  weekControls: { flexDirection: 'row', alignItems: 'center' },
+  navButton: { paddingHorizontal: 8 },
+  weekLabelWrap: { alignItems: 'center', paddingHorizontal: 8 },
+  weekLabel: { fontSize: fontSizes.md, fontWeight: fontWeights.bold, color: colors.text },
+  weekSubLabel: { fontSize: fontSizes.xs, color: colors.textSecondary },
+  debugStrip: { padding: 10, backgroundColor: palettes.neutral?.[50] ?? '#f8fafc', borderBottomWidth: 1, borderBottomColor: palettes.neutral?.[200] ?? '#e6eef6' },
+  debugText: { fontSize: fontSizes.xs, color: palettes.neutral?.[700] ?? '#475569' },
+  debugError: { marginTop: 6, color: palettes.danger?.[600] ?? '#ef4444', fontSize: fontSizes.xs },
+  loader: { marginTop: 30 },
+  weekScroll: { paddingVertical: 12, paddingHorizontal: 6 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyStateTitle: { fontSize: fontSizes.lg, color: colors.textSecondary },
+  emptyStateSubtitle: { fontSize: fontSizes.sm, color: colors.textSecondary, marginTop: 6 },
+});
+
+// Local (component) styles — these are layout/visual details for cards & columns
+const localStyles = StyleSheet.create({
+  dayColumn: {
+    minHeight: 420,
+    padding: 10,
+    marginHorizontal: 6,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  dayHeaderCompact: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  dayNameCompact: { fontSize: 12, textTransform: 'uppercase', color: '#6b7280' },
+  dayNumberWrap: { flexDirection: 'row', alignItems: 'center' },
+  dayNumberCompact: { fontSize: 18, marginLeft: 6, color: '#111827' },
+  todayDot: { width: 8, height: 8, borderRadius: 8, marginLeft: 8 },
+
+  emptyDayCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 24 },
+  emptyEmoji: { fontSize: 28 },
+  emptyText: { color: '#6b7280', marginTop: 8 },
+
+  eventsList: { paddingBottom: 12 },
+  eventWrapper: { marginBottom: 8 },
+
+  eventCard: {
+    width: 250,
+    borderRadius: 14,
+    padding: 12,
+    marginHorizontal: 4,
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+  },
+  eventCardCompact: { paddingVertical: 8, paddingHorizontal: 10 },
+
+  eventTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  eventTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  eventTitleCompact: { fontSize: 13 },
+  statusDot: { width: 10, height: 10, borderRadius: 6, marginLeft: 8 },
+
+  courseLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  coursePill: { backgroundColor: '#f8fafc', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
+  courseText: { fontSize: 12, color: '#334155', fontWeight: '600' },
+  metaText: { color: '#475569', fontSize: 12 },
+  metaTextCompact: { color: '#475569', fontSize: 12, marginBottom: 6 },
+
+  description: { color: '#475569', fontSize: 12, marginBottom: 6 },
+
+  eventFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  durationText: { fontSize: 12, fontWeight: '700', color: '#065f46' },
+  whenText: { fontSize: 12, color: '#6b7280' },
+});
+
+export default AgendaWeekScreen;

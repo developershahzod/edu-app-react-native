@@ -9,8 +9,11 @@ export type CalendarEvent = {
   ends_at?: string;   // ISO
   course_id?: string | number;
   course_name?: string;
+  course_title?: string;
   place?: string;
   teacher_id?: number;
+  description?: string;
+  due_time?: string;
   // Fallbacks for different backends
   start_date?: string;
   end_date?: string;
@@ -19,13 +22,16 @@ export type CalendarEvent = {
 };
 
 export class CalendarApi extends BaseAPI {
-  async getMyEvents(): Promise<ApiResponse<CalendarEvent[]>> {
+  async getMyEvents(params?: {
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<ApiResponse<CalendarEvent[]>> {
     return this.request<ApiResponse<CalendarEvent[]>>(
       '/calendar/my-events',
       {
-        // The runtime supports init.query passthrough
-    
-      } as any
+        method: 'GET',
+        query: params || {},
+      }
     );
   }
 }
