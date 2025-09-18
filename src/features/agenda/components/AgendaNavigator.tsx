@@ -26,6 +26,7 @@ import { BookingScreen } from '../screens/BookingScreen';
 import { DeadlineScreen } from '../screens/DeadlineScreen';
 import { LectureScreen } from '../screens/LectureScreen';
 import { DeadlineItem, LectureItem } from '../types/AgendaItem';
+import { CoursesScreen } from '~/features/courses/screens/CoursesScreen';
 
 export type AgendaStackParamList = CourseSharedScreensParamList &
   SharedScreensParamList & {
@@ -87,6 +88,14 @@ export const AgendaNavigator = () => {
           },
         }}
       />
+
+       <Stack.Screen
+              name="Courses"
+              component={CoursesScreen}
+              options={{
+                headerTitle: t('coursesScreen.title'),
+              }}
+            />
       <Stack.Screen
         name="Lecture"
         component={LectureScreen}
