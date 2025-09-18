@@ -13,7 +13,7 @@ import {
   Modal 
 } from 'react-native';
 import { pick, types } from '@react-native-documents/picker';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { CtaButton } from '@lib/ui/components/CtaButton';
 import { List } from '@lib/ui/components/List';
@@ -47,6 +47,25 @@ interface SubmissionData {
   files: SelectedFile[];
 }
 
+interface AssignmentSubmission {
+  content: string;
+  file_url: string;
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  submitted_at: string;
+  student: {
+    login: string;
+    email: string;
+    phone_number: string;
+    role_type: string;
+    name: string;
+    surname: string;
+    id: string;
+    is_active: boolean;
+  };
+}
+
 export const CourseAssignmentsScreen = ({ navigation }: Props) => {
   const { t } = useTranslation();
   const courseId = useCourseContext();
@@ -65,6 +84,36 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
   const [content, setContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [isPickingFiles, setIsPickingFiles] = useState(false);
+
+  // Query to check existing submission
+  const submissionQuery = useQuery({
+    queryKey: ['assignmentSubmission', selectedAssignmentId],
+    queryFn: async (): Promise<AssignmentSubmission | null> => {
+      if (!selectedAssignmentId) return null;
+      
+      const response = await fetch(
+        `https://edu-api.qalb.uz/api/v1/assignments/${selectedAssignmentId}/my-submission`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 404) {
+        return null; // No submission found
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    enabled: !!selectedAssignmentId && showUploadModal,
+    staleTime: 0, // Always refetch to get latest data
+  });
 
   // API submission mutation
   const submitAssignmentMutation = useMutation({
@@ -102,6 +151,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courseAssignments', courseId] });
+      queryClient.invalidateQueries({ queryKey: ['assignmentSubmission', selectedAssignmentId] });
       
       Alert.alert(
         'Success',
@@ -209,11 +259,34 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
       return;
     }
 
-    submitAssignmentMutation.mutate({
-      assignmentId: selectedAssignmentId,
-      content: content.trim(),
-      files: selectedFiles,
-    });
+    // Check if this is a resubmission
+    const existingSubmission = submissionQuery.data;
+    if (existingSubmission) {
+      Alert.alert(
+        'Resubmission Confirmation',
+        'You have already submitted this assignment. Do you want to resubmit?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Resubmit',
+            style: 'destructive',
+            onPress: () => {
+              submitAssignmentMutation.mutate({
+                assignmentId: selectedAssignmentId,
+                content: content.trim(),
+                files: selectedFiles,
+              });
+            },
+          },
+        ]
+      );
+    } else {
+      submitAssignmentMutation.mutate({
+        assignmentId: selectedAssignmentId,
+        content: content.trim(),
+        files: selectedFiles,
+      });
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -224,7 +297,13 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
   const isSubmitting = submitAssignmentMutation.isPending || submitAssignmentMutation.isLoading;
+  const isLoadingSubmission = submissionQuery.isLoading;
+  const existingSubmission = submissionQuery.data;
 
   return (
     <>
@@ -274,12 +353,59 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              Submit Assignment
+              {existingSubmission ? 'Resubmit Assignment' : 'Submit Assignment'}
             </Text>
             <View style={styles.placeholder} />
           </View>
 
           <ScrollView style={styles.modalContent}>
+            {/* Loading state */}
+            {isLoadingSubmission && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>
+                  Checking existing submission...
+                </Text>
+              </View>
+            )}
+
+            {/* Existing Submission Info */}
+            {!isLoadingSubmission && existingSubmission && (
+              <View style={styles.existingSubmissionContainer}>
+                <View style={styles.warningHeader}>
+                  <Text style={styles.warningIcon}>⚠️</Text>
+                  <Text style={styles.warningTitle}>
+                    Assignment Already Submitted
+                  </Text>
+                </View>
+                
+                <View style={styles.submissionInfo}>
+                  <Text style={styles.submissionLabel}>Submitted on:</Text>
+                  <Text style={styles.submissionValue}>
+                    {formatDate(existingSubmission.submitted_at)}
+                  </Text>
+                  
+                  {existingSubmission.content && (
+                    <>
+                      <Text style={styles.submissionLabel}>Previous content:</Text>
+                      <Text style={styles.submissionContent} numberOfLines={3}>
+                        {existingSubmission.content}
+                      </Text>
+                    </>
+                  )}
+                  
+                  {existingSubmission.file_url && (
+                    <>
+                      <Text style={styles.submissionLabel}>Attached file:</Text>
+                      <Text style={styles.fileUrl} numberOfLines={1}>
+                        {existingSubmission.file_url}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+            )}
+
             {/* Content Input Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
@@ -292,7 +418,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                 placeholder="Enter your assignment text here..."
                 value={content}
                 onChangeText={setContent}
-                editable={!isSubmitting}
+                editable={!isSubmitting && !isLoadingSubmission}
                 textAlignVertical="top"
               />
             </View>
@@ -304,9 +430,12 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
               </Text>
               
               <TouchableOpacity
-                style={[styles.filePickerButton, isPickingFiles && styles.filePickerButtonDisabled]}
+                style={[
+                  styles.filePickerButton, 
+                  (isPickingFiles || isLoadingSubmission) && styles.filePickerButtonDisabled
+                ]}
                 onPress={pickFiles}
-                disabled={isPickingFiles || isSubmitting}
+                disabled={isPickingFiles || isSubmitting || isLoadingSubmission}
               >
                 {isPickingFiles ? (
                   <ActivityIndicator size="small" color="#007AFF" />
@@ -333,7 +462,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                       <TouchableOpacity
                         style={styles.removeButton}
                         onPress={() => removeFile(index)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || isLoadingSubmission}
                       >
                         <Text style={styles.removeButtonText}>×</Text>
                       </TouchableOpacity>
@@ -348,7 +477,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
               <View style={styles.statusContainer}>
                 <ActivityIndicator size="small" color="#007AFF" />
                 <Text style={styles.statusText}>
-                  Submitting...
+                  {existingSubmission ? 'Resubmitting...' : 'Submitting...'}
                 </Text>
               </View>
             )}
@@ -357,9 +486,14 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
           {/* Submit Button */}
           <View style={styles.modalFooter}>
             <CtaButton
-              title="Submit Assignment"
+              title={existingSubmission ? "Resubmit Assignment" : "Submit Assignment"}
               action={handleSubmit}
-              disabled={isDisabled || isSubmitting || (!content.trim() && selectedFiles.length === 0)}
+              disabled={
+                isDisabled || 
+                isSubmitting || 
+                isLoadingSubmission ||
+                (!content.trim() && selectedFiles.length === 0)
+              }
             />
           </View>
         </SafeAreaView>
@@ -418,6 +552,62 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666666',
+  },
+  existingSubmissionContainer: {
+    backgroundColor: '#fff3cd',
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+    borderRadius: 8,
+    marginBottom: 24,
+    overflow: 'hidden',
+  },
+  warningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#ffeaa7',
+  },
+  warningIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  warningTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#856404',
+  },
+  submissionInfo: {
+    padding: 12,
+  },
+  submissionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#856404',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  submissionValue: {
+    fontSize: 14,
+    color: '#333333',
+  },
+  submissionContent: {
+    fontSize: 14,
+    color: '#333333',
+    fontStyle: 'italic',
+  },
+  fileUrl: {
+    fontSize: 14,
+    color: '#007AFF',
+    textDecorationLine: 'underline',
   },
   section: {
     marginBottom: 24,

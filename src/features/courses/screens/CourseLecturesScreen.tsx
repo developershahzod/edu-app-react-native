@@ -226,7 +226,6 @@ export const CourseLectureListItem = ({
           courseId,
           lectureId: lecture.id,
           teacherId: lecture.teacherId,
-
           file_type: lecture.file_type,
         },
       }}

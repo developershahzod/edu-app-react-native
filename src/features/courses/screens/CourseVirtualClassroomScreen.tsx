@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
+
+import { PdfView } from 'react-native-pdf-light';
 
 import { RefreshControl } from '@lib/ui/components/RefreshControl';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -38,8 +41,11 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
   );
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [pdfSource, setPdfSource] = useState<string | null>(null);
+  const [showPdf, setShowPdf] = useState(false);
 
   const fileUrl = `https://edu-api.qalb.uz/api/v1/lecture-files/download/${lectureId}`;
+  const isPdf = file_type && typeof file_type === 'string' && file_type.toLowerCase().includes('pdf');
 
   function arrayBufferToBase64(arrayBuffer: ArrayBuffer) {
     let binary = '';
@@ -52,7 +58,22 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
     return global.btoa(binary);
   }
 
-  async function handleExternalOpen() {
+  async function handlePdfOpen() {
+    try {
+      setIsDownloading(true);
+      
+      const localFilePath = `${RNFS.DocumentDirectoryPath}/${lectureId}${file_type}`;
+      // Set PDF source directly to server URL with headers
+      setPdfSource(localFilePath);
+      setShowPdf(true);
+    } catch (error: any) {
+      Alert.alert('PDF Error', error.message || 'Unable to load PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  async function handleFileDownload() {
     try {
       setIsDownloading(true);
 
@@ -81,10 +102,86 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
     }
   }
 
-  // ✅ Auto-download when page opens
+  const handleFileAction = () => {
+    if (isPdf) {
+      handlePdfOpen();
+    } else {
+      handleFileDownload();
+    }
+  };
+
+  // Auto-open when page loads
   useEffect(() => {
-    handleExternalOpen();
+    handleFileAction();
   }, []);
+
+  // If PDF is loaded, show PDF viewer
+  if (showPdf && pdfSource) {
+    return (
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', padding: 16, backgroundColor: '#f8f9fa' }}>
+          <TouchableOpacity
+            onPress={() => setShowPdf(false)}
+            style={{
+              backgroundColor: '#6c757d',
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              marginRight: 8,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600' }}>
+              {t('Back')}
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={handleFileDownload}
+            disabled={isDownloading}
+            style={{
+              backgroundColor: isDownloading ? '#bbb' : '#28a745',
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+            }}
+          >
+            {isDownloading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={{ color: '#fff', fontWeight: '600' }}>
+                {t('Download')}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+      
+          <PdfView
+            source={pdfSource}
+
+   
+
+           resizeMode="fitWidth"
+              style={{ flex: 1}}
+
+      
+
+  
+
+            onLoadComplete={(numberOfPages) => {
+              console.log(`PDF loaded with ${numberOfPages} pages`);
+            }}
+            onError={(error) => {
+              console.error('PDF Error:', error);
+              Alert.alert('PDF Error', 'Unable to display PDF');
+              setShowPdf(false);
+            }}
+           
+          />
+    
+      </SafeAreaView>
+    );
+  }
 
   return (
     <ScrollView
@@ -92,10 +189,10 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
       refreshControl={<RefreshControl queries={[virtualClassroomQuery, teacherQuery]} manual />}
       contentContainerStyle={[GlobalStyles.fillHeight, { flexGrow: 1 }]}
     >
-      <SafeAreaView style={{justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+      <SafeAreaView style={{ justifyContent: 'center', alignItems: 'center', padding: 16 }}>
         <View style={{ width: '100%', alignItems: 'center' }}>
           <TouchableOpacity
-            onPress={handleExternalOpen}
+            onPress={handleFileAction}
             disabled={isDownloading}
             style={{
               backgroundColor: isDownloading ? '#bbb' : '#007AFF',
@@ -105,17 +202,27 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
               borderRadius: 12,
               alignItems: 'center',
               justifyContent: 'center',
-     
             }}
           >
             {isDownloading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
-                {t('Download Lecture File')}
+                {isPdf ? t('Open PDF') : t('Download Lecture File')}
               </Text>
             )}
           </TouchableOpacity>
+
+          {lecture && (
+            <View style={{ marginTop: 20, alignItems: 'center' }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>
+                {lecture.title}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#666' }}>
+                {t('File type')}: {file_type}
+              </Text>
+            </View>
+          )}
         </View>
 
         <BottomBarSpacer />

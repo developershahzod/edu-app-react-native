@@ -145,7 +145,7 @@ export const CourseSharedScreens = () => {
         name="CourseVirtualClassroom"
         component={CourseVirtualClassroomScreen}
         getId={({ params }: { params: any }) =>
-          `${params.courseId}${params.lectureId}`
+          `${params.courseId}${params.lectureId}${params.file_type}`
         }
         options={{
           headerLargeTitle: false,
