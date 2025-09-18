@@ -46,7 +46,6 @@ import { AgendaState } from '../types/AgendaState';
 import { AgendaWeek } from '../types/AgendaWeek';
 
 type Props = NativeStackScreenProps<AgendaStackParamList, 'Agenda'>;
-
 export const AgendaScreen = ({ navigation, route }: Props) => {
   const { palettes, fontSizes } = useTheme();
   const { t } = useTranslation();
