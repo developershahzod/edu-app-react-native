@@ -191,17 +191,17 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
             />
           </OverviewList>
           <OverviewList indented>
-            <ListItem
+            {/* <ListItem
               title={t('notificationsScreen.title')}
               leadingItem={<Icon icon={faBell} size={fontSizes.xl} />}
               linkTo="Notifications"
-            />
+            /> */}
             <ListItem
               title={t('profileScreen.settings')}
               leadingItem={<Icon icon={faCog} size={fontSizes.xl} />}
               linkTo="Settings"
             />
-            <ListItem
+            {/* <ListItem
               title={t('messagesScreen.title')}
               leadingItem={<Icon icon={faMessage} size={fontSizes.xl} />}
               linkTo="Messages"
@@ -211,7 +211,7 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
                   <UnreadBadge text={filterUnread(messages.data).length} />
                 ) : undefined
               }
-            />
+            /> */}
           </OverviewList>
           <CtaButton
             absolute={false}

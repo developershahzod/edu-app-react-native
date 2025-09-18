@@ -95,7 +95,7 @@ export const ContactsScreen = () => {
       <HeaderAccessory style={styles.searchBar}>
         <Row align="center" style={{ flex: 1 }}>
           <TranslucentTextField
-            autoFocus
+            
             autoCorrect={false}
             leadingIcon={faSearch}
             value={search}

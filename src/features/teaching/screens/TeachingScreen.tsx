@@ -103,7 +103,7 @@ export const TeachingScreen = ({ navigation }: Props) => {
 
         <Section>
           <SectionHeader title={t('common.transcript')} trailingItem={<HideGrades />} />
-          <View style={GlobalStyles.relative}>
+          {/* <View style={GlobalStyles.relative}>
             <Card style={styles.transcriptCard}>
               {studentQuery.isLoading ? (
                 isOffline ? (
@@ -128,7 +128,12 @@ export const TeachingScreen = ({ navigation }: Props) => {
               )}
             </Card>
             {transcriptBadge && <UnreadBadge text={transcriptBadge} style={styles.badge} />}
-          </View>
+          </View> */}
+          <OverviewList loading={false} indented emptyStateText={isOffline && examsQuery.isLoading ? t('common.cacheMiss') : t('examsScreen.emptyState')}>
+            {exams.map((exam, index) => (
+              <ExamListItem key={`${exam.id}${exam.moduleNumber}`} exam={exam} bottomBorder={index < exams.length - 1} />
+            ))}
+          </OverviewList>
         </Section>
       </View>
       <BottomBarSpacer />

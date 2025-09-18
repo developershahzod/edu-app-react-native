@@ -601,40 +601,46 @@ export type CourseLectureSection = {
   isExpanded?: boolean;
 };
 
-export const useGetCourseLectures = (courseId: number | string) => {
+export const useGetCourseLectures = (courseId: string | number) => {
+  const { token } = useApiContext();
   const { t } = useTranslation();
 
-  const videoLecturesQuery = useGetCourseVideolectures(courseId);
-  const virtualClassroomsQuery = useGetCourseVirtualClassrooms(courseId);
-
   return useQuery<CourseLectureSection[]>({
-    queryKey: [COURSE_QUERY_PREFIX, courseId, 'lectures'],
-    queryFn: () => {
-      const lectureSections: CourseLectureSection[] = [];
+    queryKey: ['course-lectures', courseId],
+    queryFn: async () => {
+      const response = await fetch(
+        `https://edu-api.qalb.uz/api/v1/lectures/?course_id=${courseId}`,
+        {
+          headers: {
+            accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      virtualClassroomsQuery.data?.length &&
-        lectureSections.push({
-          courseId,
-          title: t('common.virtualClassroom_plural'),
-          type: 'VirtualClassroom',
-          data: virtualClassroomsQuery.data,
-        });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch lectures: ${response.statusText}`);
+      }
 
-      videoLecturesQuery.data?.length &&
-        lectureSections.push({
-          courseId,
-          title: t('common.videoLecture_plural'),
-          type: 'VideoLecture',
-          data: videoLecturesQuery.data,
-        });
+      const data: {
+        title: string;
+        id: string;
+        course_id: string;
+        files: any[];
+      }[] = await response.json();
 
-      return lectureSections;
+      // Transform each lecture section into CourseLectureSection
+      return data.map(section => ({
+        courseId: section.course_id,
+        title: section.title,
+        type: 'Lecture',
+        data: section.files,
+      }));
     },
-    enabled: !(
-      videoLecturesQuery.isLoading || virtualClassroomsQuery.isLoading
-    ),
+    enabled: !!token && !!courseId,
   });
 };
+
 
 /**
  * Exams filtered by course shortcode

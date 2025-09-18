@@ -29,7 +29,6 @@ type Props = NativeStackScreenProps<TeachingStackParamList, 'Course'>;
 export interface CourseTabsParamList extends TeachingStackParamList {
   CourseInfoScreen: undefined;
   CourseNoticesScreen: undefined;
-  CourseFilesScreen: undefined;
   CourseLecturesScreen: undefined;
   CourseAssignmentsScreen: undefined;
 }
@@ -79,26 +78,7 @@ export const CourseNavigator = ({ route, navigation }: Props) => {
             {course.name || course.title || course.uniqueShortcode}
           </Text>
         </Row>
-      ),
-      headerRight: () => (
-        <IconButton
-          icon={faSliders}
-          color={palettes.primary[400]}
-          size={fontSizes.lg}
-          accessibilityRole="button"
-          accessibilityLabel={t('common.preferences')}
-          hitSlop={{
-            left: +spacing[3],
-            right: +spacing[3],
-          }}
-          onPress={() => {
-            navigation.navigate('CoursePreferences', {
-              courseId: id,
-              uniqueShortcode: course.uniqueShortcode,
-            });
-          }}
-        />
-      ),
+      )
     });
   }, [
     coursesQuery.data,
@@ -138,22 +118,7 @@ export const CourseNavigator = ({ route, navigation }: Props) => {
               },
             }}
           />
-          <TopTabs.Screen
-            name="CourseFilesScreen"
-            component={FileNavigator}
-            options={{
-              title: t('courseFilesTab.title'),
-              tabBarBadge: () => {
-                const count = getUnreadsCount([
-                  'teaching',
-                  'courses',
-                  id.toString(),
-                  'files',
-                ]);
-                return count && count > 0 ? <Text>{count}</Text> : <Text />;
-              },
-            }}
-          />
+        
           <TopTabs.Screen
             name="CourseLecturesScreen"
             component={CourseLecturesScreen}

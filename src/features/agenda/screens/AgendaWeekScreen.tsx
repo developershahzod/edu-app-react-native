@@ -138,8 +138,7 @@ const EventDetailModal = ({ event, visible, onClose }: { event: ProcessedEvent |
           {event.course?.title && <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 6 }}>Course: {event.course.title}</Text>}
           <Text style={{ marginBottom: 6 }}>{event.description}</Text>
           <Text style={{ marginBottom: 6 }}>All Day: {event.allDay ? 'Yes' : 'No'}</Text>
-          <Text style={{ marginBottom: 6 }}>Start: {event.start.toFormat('fff')}</Text>
-          <Text style={{ marginBottom: 6 }}>End: {event.end.toFormat('fff')}</Text>
+  
        
 
           <Pressable 
@@ -210,7 +209,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
   const getPrevWeek = useCallback(() => setCurrentWeek(w => w.minus({ days: 7 })), []);
 
   const onSelectDate = useCallback((jsDate: Date) => {
-    const dt = DateTime.fromJSDate(jsDate, { zone: IANAZone.create('Europe/Rome') });
+    const dt = DateTime.fromJSDate(jsDate, { zone: IANAZone.create('Asia/Tashkent') });
     setDatePickerOpen(false);
     setCurrentWeek(dt.startOf('week'));
     setSelectedDate(dt);
@@ -251,7 +250,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
   return (
     <View style={styles.container}>
       <HeaderAccessory justify="space-between" style={styles.headerRow}>
-        <Tabs contentContainerStyle={styles.tabs}><AgendaTypeFilter /></Tabs>
+    
 
         <View style={styles.weekControls}>
           <View style={styles.weekLabelWrap}>
@@ -306,7 +305,7 @@ const createStyles = ({ spacing, colors, palettes, fontWeights, fontSizes }: any
   container: { flex: 1, backgroundColor: colors.background },
   headerRow: { padding: spacing[2], paddingHorizontal: spacing[3], backgroundColor: colors.surface, borderBottomColor: colors.divider, borderBottomWidth: 1 },
   tabs: { alignItems: 'center' },
-  weekControls: { flexDirection: 'row', alignItems: 'center' },
+  weekControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1 },
   weekLabelWrap: { alignItems: 'center', paddingHorizontal: 8 },
   weekLabel: { fontSize: fontSizes.md, fontWeight: fontWeights.bold, color: colors.text },
   weekSubLabel: { fontSize: fontSizes.xs, color: colors.textSecondary },

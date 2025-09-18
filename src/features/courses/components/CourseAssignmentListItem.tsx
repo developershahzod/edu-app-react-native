@@ -67,7 +67,6 @@ export const CourseAssignmentListItem = ({
           textDecorationLine:
             item.deletedAt != null ? 'line-through' : undefined,
         }}
-        subtitle={subTitle}
         accessibilityLabel={`${accessibilityListLabel}. ${item.description}, ${subTitle}`}
         mimeType={item.mimeType}
         trailingItem={

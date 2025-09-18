@@ -40,6 +40,7 @@ import {
   CourseLectureSection,
 } from '../types/CourseLectureSections';
 import { isRecordedVC, isVideoLecture } from '../utils/lectures';
+import { faFilePdf } from '@fortawesome/free-regular-svg-icons';
 
 export const CourseLecturesScreen = () => {
   const { t } = useTranslation();
@@ -202,32 +203,17 @@ export const CourseLectureListItem = ({
   const { t } = useTranslation();
 
   let duration = null;
-  if (isRecordedVC(lecture) || isVideoLecture(lecture)) {
-    duration = lecture.duration;
-  }
+ 
 
   return (
+    lecture.file_type !== 'folder' ?
     <ListItem
-      title={lecture.title}
-      subtitle={[
-        formatDate(lecture.createdAt),
-        duration,
-        teacher && `${teacher.firstName} ${teacher.lastName}`,
-      ]
-        .filter(i => !!i)
-        .join(' - ')}
-      accessibilityLabel={[
-        lecture.title,
-        duration
-          ?.replace('m', t('common.minutes'))
-          ?.replace('h', t('common.hours')),
-        teacher && `${teacher.firstName} ${teacher.lastName}`,
-      ]
-        .filter(i => !!i)
-        .join(' - ')}
+      title={lecture.filename}
+    
+    
       leadingItem={
         <Icon
-          icon={section.type === 'VideoLecture' ? faVideo : faChalkboardTeacher}
+          icon={faFilePdf}
           size={fontSizes['2xl']}
         />
       }
@@ -240,10 +226,12 @@ export const CourseLectureListItem = ({
           courseId,
           lectureId: lecture.id,
           teacherId: lecture.teacherId,
+
+          file_type: lecture.file_type,
         },
       }}
       containerStyle={marginHorizontal}
       disabled={isDisabled}
-    />
+    /> : null
   );
 };

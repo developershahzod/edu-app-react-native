@@ -207,13 +207,12 @@ export const CourseInfoScreen = () => {
                   <Metric
                     title={t('common.period')}
                     value={
-                      courseQuery.data?.start_date && courseQuery.data?.end_date
-                        ? `${new Date(courseQuery.data.start_date).toLocaleDateString()} - ${new Date(courseQuery.data.end_date).toLocaleDateString()}`
-                        : `${courseQuery.data?.teachingPeriod ?? '--'} - ${courseQuery.data?.year ?? '--'}`
+                     `${courseQuery.data?.semester == null ? '--' : courseQuery.data?.semester}`
+
                     }
                     accessibilityLabel={
                       courseQuery.data?.start_date && courseQuery.data?.end_date
-                        ? `${t('common.period')}: ${new Date(courseQuery.data.start_date).toLocaleDateString()} - ${new Date(courseQuery.data.end_date).toLocaleDateString()}`
+                        ? `${t('common.period')}: ${new Date(courseQuery.data.start_date)} - ${new Date(courseQuery.data.end_date).toLocaleDateString()}`
                         : `${t('degreeCourseScreen.period')}: ${courseQuery.data?.teachingPeriod ?? '--'} - ${courseQuery.data?.year ?? '--'}`
                     }
                     style={styles.periodMetric}
@@ -314,26 +313,10 @@ export const CourseInfoScreen = () => {
         </Section>
 
         {/* Files preview */}
-        <Section>
-          <SectionHeader title={'Files'} />
-          <OverviewList
-            indented
-            loading={filesPreviewQuery.isLoading}
-            emptyStateText={t('courseFilesTab.empty')}
-          >
-            {(filesPreviewQuery.data ?? []).slice(0, 3).map((file: any) => (
-              <CourseRecentFileListItem key={file.id} item={file} />
-            ))}
-            <ListItem
-              title={t('courseFilesTab.title')}
-              linkTo={{ screen: 'CourseFilesScreen' }}
-              isAction
-            />
-          </OverviewList>
-        </Section>
+       
 
         {/* Lectures preview */}
-        <Section>
+        {/* <Section>
           <SectionHeader title={t('courseLecturesTab.title') ?? 'Lectures'} />
           <OverviewList
             indented
@@ -344,7 +327,7 @@ export const CourseInfoScreen = () => {
               <CourseLectureListItem
                 key={lecture.id}
                 courseId={courseId}
-                section={{ title: '', type: 'VirtualClassroom', data: [], courseId }}
+                section={lecture.files}
                 lecture={lecture}
               />
             ))}
@@ -354,7 +337,7 @@ export const CourseInfoScreen = () => {
               isAction
             />
           </OverviewList>
-        </Section>
+        </Section> */}
 
         
 
@@ -453,7 +436,7 @@ export const CourseInfoScreen = () => {
           </OverviewList>
         </Section>
 
-        <Section>
+        {/* <Section>
           <SectionHeader title={t('courseInfoTab.moreSectionTitle')} />
           <OverviewList>
             <ListItem
@@ -477,7 +460,7 @@ export const CourseInfoScreen = () => {
               disabled={isStatisticsDisabled}
             />
           </OverviewList>
-        </Section>
+        </Section> */}
         <BottomBarSpacer />
       </SafeAreaView>
     </ScrollView>

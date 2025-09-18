@@ -150,7 +150,7 @@ export const CourseSharedScreens = () => {
         options={{
           headerLargeTitle: false,
           headerBackTitle: t('common.course'),
-          title: t('courseVirtualClassroomScreen.title'),
+          title: "File",
         }}
       />
       <Stack.Screen
