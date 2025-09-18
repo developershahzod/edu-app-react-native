@@ -1709,6 +1709,30 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-pdf (6.7.7):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-pdf-light (2.4.2):
     - React-Core
   - react-native-render-html (6.3.4):
@@ -2800,6 +2824,7 @@ DEPENDENCIES:
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-override-color-scheme (from `../node_modules/react-native-override-color-scheme`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
+  - react-native-pdf (from `../node_modules/react-native-pdf`)
   - react-native-pdf-light (from `../node_modules/react-native-pdf-light`)
   - react-native-render-html (from `../node_modules/react-native-render-html`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2993,6 +3018,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-override-color-scheme"
   react-native-pager-view:
     :path: "../node_modules/react-native-pager-view"
+  react-native-pdf:
+    :path: "../node_modules/react-native-pdf"
   react-native-pdf-light:
     :path: "../node_modules/react-native-pdf-light"
   react-native-render-html:
@@ -3177,6 +3204,7 @@ SPEC CHECKSUMS:
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-override-color-scheme: 53dc74663e03040074efbfb81cfb35b97d9bbaa5
   react-native-pager-view: 919534782a0489f7e2aeeb9a8b8959edfd3f067a
+  react-native-pdf: 36118ab1926ea47ea8de8b1b8f681b69e3afc7d3
   react-native-pdf-light: 53139b084304650c3495dd8765e43d363d30bfce
   react-native-render-html: 5afc4751f1a98621b3009432ef84c47019dcb2bd
   react-native-safe-area-context: 091add53da15b67c76b176724725581b29a1cde3

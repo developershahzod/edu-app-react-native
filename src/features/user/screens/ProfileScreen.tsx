@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView, ScrollView, View } from 'react-native';
+import { SafeAreaView, ScrollView, View, Image } from 'react-native';
 
 import {
   faAngleDown,
@@ -8,6 +8,8 @@ import {
   faCog,
   faMessage,
   faSignOut,
+  faUser,
+  faGraduationCap,
 } from '@fortawesome/free-solid-svg-icons';
 import { CtaButton } from '@lib/ui/components/CtaButton';
 import { Icon } from '@lib/ui/components/Icon';
@@ -21,7 +23,7 @@ import { StatefulMenuView } from '@lib/ui/components/StatefulMenuView';
 import { Text } from '@lib/ui/components/Text';
 import { UnreadBadge } from '@lib/ui/components/UnreadBadge';
 import { useTheme } from '@lib/ui/hooks/useTheme';
-import { Student } from '../../lib/api-client';
+import { Student } from '../../../lib/api-client';
 import { MenuAction, NativeActionEvent } from '@react-native-menu/menu';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
@@ -33,7 +35,7 @@ import {
 import { BottomBarSpacer } from '../../../core/components/BottomBarSpacer';
 import { CardSwiper } from '../../../core/components/CardSwiper';
 import { useOfflineDisabled } from '../../../core/hooks/useOfflineDisabled';
-import { useLogout, useSwitchCareer } from '../../../core/queries/authHooks';
+import { useLogout } from '../../../core/queries/authHooks';
 import {
   MESSAGES_QUERY_KEY,
   useGetMessages,
@@ -50,16 +52,65 @@ type UserDetailsProps = {
 
 const UserDetails = ({ student }: UserDetailsProps) => {
   const { t } = useTranslation();
-  const { spacing, fontSizes } = useTheme();
+  const { spacing, fontSizes, palettes } = useTheme();
 
   return (
     <Section accessible={false} style={{ marginTop: spacing[3] }}>
-      {/* <SectionHeader
-        title={student?.lastName + ' ' + student?.firstName}
-        subtitle={t('common.shortUsername') + ' ' + student?.username}
-        titleStyle={{ fontSize: fontSizes.xl }}
-        subtitleStyle={{ fontSize: fontSizes.lg }}
-      /> */}
+      {/* User Profile Image */}
+      <View style={{ 
+        alignItems: 'center', 
+        marginBottom: spacing[4],
+        paddingVertical: spacing[3]
+      }}>
+        {student?.profilePicture || student?.smartCardPicture ? (
+          <Image
+            source={{ uri: student?.profilePicture || student?.smartCardPicture }}
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: palettes.gray[200],
+            }}
+            accessible={true}
+            accessibilityLabel={t('profileScreen.profilePicture')}
+          />
+        ) : (
+          <View
+            style={{
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: palettes.gray[200],
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            accessible={true}
+            accessibilityLabel={t('profileScreen.defaultProfilePicture')}
+          >
+            <Icon 
+              icon={faUser} 
+              size={fontSizes['2xl']} 
+              color={palettes.gray[500]} 
+            />
+          </View>
+        )}
+      </View>
+
+      {/* User Name and Details */}
+      <SectionHeader
+        title={`${student?.firstName || ''} ${student?.lastName || ''}`.trim()}
+        subtitle={`${t('common.shortUsername')} ${student?.username || ''}`}
+        titleStyle={{ 
+          fontSize: fontSizes.xl, 
+          textAlign: 'center',
+          marginBottom: spacing[1]
+        }}
+        subtitleStyle={{ 
+          fontSize: fontSizes.lg, 
+          textAlign: 'center',
+          color: palettes.gray[600]
+        }}
+      />
     </Section>
   );
 };
@@ -71,7 +122,6 @@ const HeaderRightDropdown = ({
   student?: Student;
   isOffline: boolean;
 }) => {
-  // const { mutate } = useSwitchCareer();
   const { t } = useTranslation();
   const { palettes, spacing } = useTheme();
   const username = student?.username || '';
@@ -91,7 +141,7 @@ const HeaderRightDropdown = ({
 
   const onPressAction = ({ nativeEvent: { event } }: NativeActionEvent) => {
     if (event === username) return;
-    mutate({ username: event });
+   // mutate({ username: event });
   };
 
   return (
@@ -132,6 +182,16 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
     return `${student.firstEnrollmentYear - 1}/${student.firstEnrollmentYear}`;
   }, [student]);
 
+  // Get degree/course information
+  const courseInfo = useMemo(() => {
+    if (!student) return null;
+    return {
+      name: student.degreeName || t('common.course'),
+      year: enrollmentYear,
+      faculty: student.facultyName || '',
+    };
+  }, [student, enrollmentYear, t]);
+
   const areMessagesMissing = useCallback(
     () => queryClient.getQueryData(MESSAGES_QUERY_KEY) === undefined,
     [queryClient],
@@ -164,12 +224,13 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
         >
           {student &&
           (student?.smartCardPicture ||
-            student.europeanStudentCard.canBeRequested) ? (
+            student.europeanStudentCard?.canBeRequested) ? (
             <CardSwiper student={student} firstRequest={firstRequest} />
           ) : (
             <UserDetails student={student} />
           )}
         </View>
+        
         <Section accessible={false}>
           <SectionHeader
             title={t('common.career')}
@@ -178,9 +239,14 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
             }
           />
           <OverviewList>
+            {/* Display Course Information */}
             <ListItem
-              title={student?.firstName + ' ' + student?.lastName}
-         
+              title={courseInfo?.name || `${student?.firstName || ''} ${student?.lastName || ''}`.trim()}
+              subtitle={courseInfo ? 
+                `${courseInfo.faculty ? `${courseInfo.faculty} • ` : ''}${t('profileScreen.academicYear')}: ${courseInfo.year}` 
+                : undefined
+              }
+              leadingItem={<Icon icon={faGraduationCap} size={fontSizes.xl} />}
               linkTo={{
                 screen: 'Degree',
                 params: {
@@ -188,31 +254,19 @@ export const ProfileScreen = ({ navigation, route }: Props) => {
                   year: student?.firstEnrollmentYear,
                 },
               }}
+              accessible={true}
+              accessibilityLabel={`${t('profileScreen.courseDetails')}: ${courseInfo?.name || student?.firstName + ' ' + student?.lastName}`}
             />
           </OverviewList>
+          
           <OverviewList indented>
-            {/* <ListItem
+            <ListItem
               title={t('notificationsScreen.title')}
               leadingItem={<Icon icon={faBell} size={fontSizes.xl} />}
               linkTo="Notifications"
-            /> */}
-            <ListItem
-              title={t('profileScreen.settings')}
-              leadingItem={<Icon icon={faCog} size={fontSizes.xl} />}
-              linkTo="Settings"
             />
-            {/* <ListItem
-              title={t('messagesScreen.title')}
-              leadingItem={<Icon icon={faMessage} size={fontSizes.xl} />}
-              linkTo="Messages"
-              disabled={areMessagesDisabled}
-              trailingItem={
-                messages.data && hasUnreadMessages(messages.data) ? (
-                  <UnreadBadge text={filterUnread(messages.data).length} />
-                ) : undefined
-              }
-            /> */}
           </OverviewList>
+          
           <CtaButton
             absolute={false}
             disabled={isOffline}

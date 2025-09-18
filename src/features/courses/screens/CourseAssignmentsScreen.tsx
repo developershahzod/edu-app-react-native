@@ -115,6 +115,47 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
     staleTime: 0, // Always refetch to get latest data
   });
 
+  // Delete submission mutation
+  const deleteSubmissionMutation = useMutation({
+    mutationFn: async (submissionId: string) => {
+      const response = await fetch(
+        `https://edu-api.qalb.uz/api/v1/submissions/${submissionId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courseAssignments', courseId] });
+      queryClient.invalidateQueries({ queryKey: ['assignmentSubmission', selectedAssignmentId] });
+      
+      Alert.alert(
+        'Success',
+        'Submission deleted successfully!',
+        [{ text: 'OK' }]
+      );
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      Alert.alert(
+        'Error',
+        `Failed to delete submission: ${error.message}`,
+        [{ text: 'OK' }]
+      );
+    },
+  });
+
   // API submission mutation
   const submitAssignmentMutation = useMutation({
     mutationFn: async (data: SubmissionData & { assignmentId: string }) => {
@@ -289,6 +330,26 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
     }
   };
 
+  const handleDeleteSubmission = () => {
+    const existingSubmission = submissionQuery.data;
+    if (!existingSubmission) return;
+
+    Alert.alert(
+      'Delete Submission',
+      'Are you sure you want to delete this submission? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteSubmissionMutation.mutate(existingSubmission.id);
+          },
+        },
+      ]
+    );
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -298,12 +359,28 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  };
+
+  const getFileNameFromUrl = (url: string) => {
+    return url.split('/').pop() || 'Unknown file';
   };
 
   const isSubmitting = submitAssignmentMutation.isPending || submitAssignmentMutation.isLoading;
+  const isDeleting = deleteSubmissionMutation.isPending || deleteSubmissionMutation.isLoading;
   const isLoadingSubmission = submissionQuery.isLoading;
   const existingSubmission = submissionQuery.data;
+
+  const currentAssignment = assignmentsQuery.data?.find(
+    assignment => assignment.id === selectedAssignmentId
+  );
 
   return (
     <>
@@ -353,7 +430,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {existingSubmission ? 'Resubmit Assignment' : 'Submit Assignment'}
+              Assignment
             </Text>
             <View style={styles.placeholder} />
           </View>
@@ -364,138 +441,176 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#007AFF" />
                 <Text style={styles.loadingText}>
-                  Checking existing submission...
+                  Loading assignment details...
                 </Text>
               </View>
             )}
 
-            {/* Existing Submission Info */}
-            {!isLoadingSubmission && existingSubmission && (
-              <View style={styles.existingSubmissionContainer}>
-                <View style={styles.warningHeader}>
-                  <Text style={styles.warningIcon}>⚠️</Text>
-                  <Text style={styles.warningTitle}>
-                    Assignment Already Submitted
-                  </Text>
-                </View>
-                
-                <View style={styles.submissionInfo}>
-                  <Text style={styles.submissionLabel}>Submitted on:</Text>
-                  <Text style={styles.submissionValue}>
-                    {formatDate(existingSubmission.submitted_at)}
-                  </Text>
+            {!isLoadingSubmission && (
+              <>
+                {/* Assignment Details Section */}
+                <View style={styles.detailsSection}>
+                  <View style={styles.sectionHeaderContainer}>
+                    <Text style={styles.sectionHeaderTitle}>ASSIGNMENT DETAILS</Text>
+                  </View>
                   
-                  {existingSubmission.content && (
-                    <>
-                      <Text style={styles.submissionLabel}>Previous content:</Text>
-                      <Text style={styles.submissionContent} numberOfLines={3}>
-                        {existingSubmission.content}
-                      </Text>
-                    </>
-                  )}
-                  
-                  {existingSubmission.file_url && (
-                    <>
-                      <Text style={styles.submissionLabel}>Attached file:</Text>
-                      <Text style={styles.fileUrl} numberOfLines={1}>
-                        {existingSubmission.file_url}
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* Content Input Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Assignment Content
-              </Text>
-              <TextInput
-                style={styles.textInput}
-                multiline
-                numberOfLines={6}
-                placeholder="Enter your assignment text here..."
-                value={content}
-                onChangeText={setContent}
-                editable={!isSubmitting && !isLoadingSubmission}
-                textAlignVertical="top"
-              />
-            </View>
-
-            {/* File Upload Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                Attachments
-              </Text>
-              
-              <TouchableOpacity
-                style={[
-                  styles.filePickerButton, 
-                  (isPickingFiles || isLoadingSubmission) && styles.filePickerButtonDisabled
-                ]}
-                onPress={pickFiles}
-                disabled={isPickingFiles || isSubmitting || isLoadingSubmission}
-              >
-                {isPickingFiles ? (
-                  <ActivityIndicator size="small" color="#007AFF" />
-                ) : (
-                  <Text style={styles.filePickerButtonText}>
-                    Select Files
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Selected Files List */}
-              {selectedFiles.length > 0 && (
-                <View style={styles.filesList}>
-                  {selectedFiles.map((file, index) => (
-                    <View key={index} style={styles.fileItem}>
-                      <View style={styles.fileInfo}>
-                        <Text style={styles.fileName} numberOfLines={1}>
-                          {file.name}
-                        </Text>
-                        <Text style={styles.fileSize}>
-                          {formatFileSize(file.size)}
+                  <View style={styles.assignmentDetailsContainer}>
+                    <Text style={styles.assignmentTitle}>
+                      {currentAssignment?.title || 'Assignment'}
+                    </Text>
+                    <Text style={styles.assignmentDescription}>
+                      {currentAssignment?.description || 'No description available'}
+                    </Text>
+                    
+                    {currentAssignment?.due_date && (
+                      <View style={styles.dueDateContainer}>
+                        <Text style={styles.dueDateText}>
+                          Due: {formatDate(currentAssignment.due_date)}
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() => removeFile(index)}
-                        disabled={isSubmitting || isLoadingSubmission}
-                      >
-                        <Text style={styles.removeButtonText}>×</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                    )}
+                  </View>
                 </View>
-              )}
-            </View>
 
-            {/* Submission Status */}
-            {isSubmitting && (
-              <View style={styles.statusContainer}>
-                <ActivityIndicator size="small" color="#007AFF" />
-                <Text style={styles.statusText}>
-                  {existingSubmission ? 'Resubmitting...' : 'Submitting...'}
-                </Text>
-              </View>
+                {/* Existing Submission Section */}
+                {existingSubmission ? (
+                  <View style={styles.submissionSection}>
+                    <View style={styles.sectionHeaderContainer}>
+                      <Text style={styles.sectionHeaderTitle}>YOUR SUBMISSION</Text>
+                    </View>
+
+                    {/* Attached Files */}
+                    {existingSubmission.file_url && (
+                      <View style={styles.attachedFilesContainer}>
+                        <Text style={styles.attachedFilesTitle}>Attached Files:</Text>
+                        <View style={styles.fileItemSubmitted}>
+                          <View style={styles.fileInfoSubmitted}>
+                            <Text style={styles.fileNameSubmitted}>
+                              {getFileNameFromUrl(existingSubmission.file_url)}
+                            </Text>
+                            <Text style={styles.fileUploadDate}>
+                              Uploaded: {formatDate(existingSubmission.submitted_at)}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Submission Table */}
+                    <View style={styles.submissionTable}>
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderText, styles.descriptionColumn]}>DESCRIPTION</Text>
+                        <Text style={[styles.tableHeaderText, styles.dateColumn]}>DATE</Text>
+                        <Text style={[styles.tableHeaderText, styles.statusColumn]}>STATUS</Text>
+                        <Text style={[styles.tableHeaderText, styles.actionsColumn]}>ACTIONS</Text>
+                      </View>
+                      
+                      <View style={styles.tableRow}>
+                        <Text style={[styles.tableCellText, styles.descriptionColumn]}>
+                          {existingSubmission.content || 'No description'}
+                        </Text>
+                        <Text style={[styles.tableCellText, styles.dateColumn]}>
+                          {formatDate(existingSubmission.submitted_at)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  /* Upload Form - Only show when no existing submission */
+                  <>
+                    {/* Content Input Section */}
+                    <View style={styles.section}>
+                      <Text style={styles.sectionTitle}>
+                        Assignment Content
+                      </Text>
+                      <TextInput
+                        style={styles.textInput}
+                        multiline
+                        numberOfLines={6}
+                        placeholder="Enter your assignment text here..."
+                        value={content}
+                        onChangeText={setContent}
+                        editable={!isSubmitting}
+                        textAlignVertical="top"
+                      />
+                    </View>
+
+                    {/* File Upload Section */}
+                    <View style={styles.section}>
+                      <Text style={styles.sectionTitle}>
+                        Attachments
+                      </Text>
+                      
+                      <TouchableOpacity
+                        style={[
+                          styles.filePickerButton, 
+                          isPickingFiles && styles.filePickerButtonDisabled
+                        ]}
+                        onPress={pickFiles}
+                        disabled={isPickingFiles || isSubmitting}
+                      >
+                        {isPickingFiles ? (
+                          <ActivityIndicator size="small" color="#007AFF" />
+                        ) : (
+                          <Text style={styles.filePickerButtonText}>
+                            Select Files
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Selected Files List */}
+                      {selectedFiles.length > 0 && (
+                        <View style={styles.filesList}>
+                          {selectedFiles.map((file, index) => (
+                            <View key={index} style={styles.fileItem}>
+                              <View style={styles.fileInfo}>
+                                <Text style={styles.fileName} numberOfLines={1}>
+                                  {file.name}
+                                </Text>
+                                <Text style={styles.fileSize}>
+                                  {formatFileSize(file.size)}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                style={styles.removeButton}
+                                onPress={() => removeFile(index)}
+                                disabled={isSubmitting}
+                              >
+                                <Text style={styles.removeButtonText}>×</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Submission Status */}
+                    {isSubmitting && (
+                      <View style={styles.statusContainer}>
+                        <ActivityIndicator size="small" color="#007AFF" />
+                        <Text style={styles.statusText}>Submitting...</Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </ScrollView>
 
-          {/* Submit Button */}
-          <View style={styles.modalFooter}>
-            <CtaButton
-              title={existingSubmission ? "Resubmit Assignment" : "Submit Assignment"}
-              action={handleSubmit}
-              disabled={
-                isDisabled || 
-                isSubmitting || 
-                isLoadingSubmission ||
-                (!content.trim() && selectedFiles.length === 0)
-              }
-            />
-          </View>
+          {/* Submit Button - Only show when no existing submission */}
+          {!isLoadingSubmission && !existingSubmission && (
+            <View style={styles.modalFooter}>
+              <CtaButton
+                title="Submit Assignment"
+                action={handleSubmit}
+                disabled={
+                  isDisabled || 
+                  isSubmitting || 
+                  (!content.trim() && selectedFiles.length === 0)
+                }
+              />
+            </View>
+          )}
         </SafeAreaView>
       </Modal>
     </>
@@ -562,52 +677,196 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666666',
   },
-  existingSubmissionContainer: {
-    backgroundColor: '#fff3cd',
-    borderWidth: 1,
-    borderColor: '#ffeaa7',
-    borderRadius: 8,
-    marginBottom: 24,
+  detailsSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    marginBottom: 16,
     overflow: 'hidden',
   },
-  warningHeader: {
+  sectionHeaderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#ffeaa7',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  warningIcon: {
-    fontSize: 18,
+  sectionIcon: {
+    fontSize: 16,
     marginRight: 8,
   },
-  warningTitle: {
+  sectionHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff3cd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgeIcon: {
+    fontSize: 12,
+    marginRight: 4,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#856404',
+  },
+  assignmentDetailsContainer: {
+    padding: 16,
+  },
+  assignmentTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  assignmentDescription: {
+    fontSize: 16,
+    color: '#666666',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  dueDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dueDateIcon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  dueDateText: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  submissionSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  attachedFilesContainer: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  attachedFilesTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#856404',
+    color: '#1a1a1a',
+    marginBottom: 12,
   },
-  submissionInfo: {
+  fileItemSubmitted: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
     padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
-  submissionLabel: {
+  fileInfoSubmitted: {
+    flex: 1,
+  },
+  fileNameSubmitted: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  fileUploadDate: {
     fontSize: 14,
+    color: '#666666',
+  },
+  downloadButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  downloadIcon: {
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  submissionTable: {
+    padding: 16,
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#e0e0e0',
+    marginBottom: 12,
+  },
+  tableHeaderText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#666666',
+    letterSpacing: 0.5,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  tableCell: {
+    justifyContent: 'center',
+  },
+  tableCellText: {
+    fontSize: 14,
+    color: '#1a1a1a',
+  },
+  descriptionColumn: {
+    flex: 2,
+    marginRight: 12,
+  },
+  dateColumn: {
+    flex: 1.5,
+    marginRight: 12,
+  },
+  statusColumn: {
+    flex: 1,
+    marginRight: 12,
+  },
+  actionsColumn: {
+    width: 40,
+    alignItems: 'center',
+  },
+  statusBadgeSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff3cd',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  statusBadgeTextSmall: {
+    fontSize: 11,
+    fontWeight: '500',
     color: '#856404',
-    marginTop: 8,
-    marginBottom: 4,
   },
-  submissionValue: {
-    fontSize: 14,
-    color: '#333333',
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ff3b30',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  submissionContent: {
-    fontSize: 14,
-    color: '#333333',
-    fontStyle: 'italic',
-  },
-  fileUrl: {
-    fontSize: 14,
-    color: '#007AFF',
-    textDecorationLine: 'underline',
+  deleteIcon: {
+    color: '#ffffff',
+    fontSize: 16,
   },
   section: {
     marginBottom: 24,

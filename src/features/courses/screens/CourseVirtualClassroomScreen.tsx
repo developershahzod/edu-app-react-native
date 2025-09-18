@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from 'react-native';
 
-import { PdfView } from 'react-native-pdf-light';
+import Pdf from 'react-native-pdf';
 
 import { RefreshControl } from '@lib/ui/components/RefreshControl';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -104,6 +104,7 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
 
   const handleFileAction = () => {
     if (isPdf) {
+       handleFileDownload();
       handlePdfOpen();
     } else {
       handleFileDownload();
@@ -120,21 +121,6 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
     return (
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', padding: 16, backgroundColor: '#f8f9fa' }}>
-          <TouchableOpacity
-            onPress={() => setShowPdf(false)}
-            style={{
-              backgroundColor: '#6c757d',
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              borderRadius: 8,
-              marginRight: 8,
-            }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>
-              {t('Back')}
-            </Text>
-          </TouchableOpacity>
-          
           <TouchableOpacity
             onPress={handleFileDownload}
             disabled={isDownloading}
@@ -156,28 +142,19 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
         </View>
 
       
-          <PdfView
-            source={pdfSource}
-
-   
-
-           resizeMode="fitWidth"
-              style={{ flex: 1}}
-
-      
-
-  
-
-            onLoadComplete={(numberOfPages) => {
-              console.log(`PDF loaded with ${numberOfPages} pages`);
-            }}
-            onError={(error) => {
-              console.error('PDF Error:', error);
-              Alert.alert('PDF Error', 'Unable to display PDF');
-              setShowPdf(false);
-            }}
-           
-          />
+        <Pdf
+        source={pdfSource}
+        style={{ flex: 1, width: Dimensions.get('window').width }}
+        fitPolicy={0} // 0 = fit width, 1 = fit height
+        onLoadComplete={(numberOfPages) => {
+          console.log(`PDF loaded with ${numberOfPages} pages`);
+        }}
+        onError={(error) => {
+          console.error('PDF Error:', error);
+          Alert.alert('PDF Error', 'Unable to display PDF');
+          setShowPdf(false);
+        }}
+      />
     
       </SafeAreaView>
     );
