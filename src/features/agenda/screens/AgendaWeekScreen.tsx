@@ -28,19 +28,17 @@ interface ProcessedEvent {
   course?: { id: string; title: string } | null;
   laneIndex?: number;
   lanesCount?: number;
-
-  extendedProps?: {room?: string, type: string};
+  extendedProps?: {room?: string, type: string, course_id: string, course_title: string};
 }
 
-const HOURS = Array.from({ length: 25 }, (_, i) => i);
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 8);
+const DAY_START_MINUTES = 8 * 60;
 const { width: screenWidth } = Dimensions.get('window');
 const DAY_COLUMN_WIDTH = Math.max(screenWidth / 7, 120);
 
 function computeLanes(events: ProcessedEvent[]): ProcessedEvent[] {
-  // Sort events by start time first
   const sorted = [...events].sort((a, b) => a.start.toMillis() - b.start.toMillis());
   const lanes: ProcessedEvent[][] = [];
-
   sorted.forEach(event => {
     let placed = false;
     for (const lane of lanes) {
@@ -55,22 +53,14 @@ function computeLanes(events: ProcessedEvent[]): ProcessedEvent[] {
       lanes.push([event]);
     }
   });
-
-  // flatten and assign lane info
-  const withLaneInfo: ProcessedEvent[] = [];
-  lanes.forEach((lane, laneIndex) => {
-    lane.forEach(ev => {
-      withLaneInfo.push({ ...ev, laneIndex, lanesCount: lanes.length });
-    });
-  });
-  return withLaneInfo;
+  return lanes.flatMap((lane, laneIndex) => lane.map(ev => ({ ...ev, laneIndex, lanesCount: lanes.length })));
 }
 
 const PositionedEventCard = ({ event, onPress }: { event: ProcessedEvent; onPress?: () => void }) => {
-  const startMinutes = event.start.hour * 60 + event.start.minute;
-  const endMinutes = event.end.hour * 60 + event.end.minute;
+  const startMinutes = Math.max(0, (event.start.hour * 60 + event.start.minute) - DAY_START_MINUTES);
+  const endMinutes = Math.max(startMinutes + 40, (event.end.hour * 60 + event.end.minute) - DAY_START_MINUTES);
   const top = startMinutes;
-  const height = Math.max(endMinutes - startMinutes, 40);
+  const height = endMinutes - startMinutes;
 
   const laneIndex = event.laneIndex ?? 0;
   const lanesCount = event.lanesCount ?? 1;
@@ -91,14 +81,15 @@ const PositionedEventCard = ({ event, onPress }: { event: ProcessedEvent; onPres
     >
       <Text numberOfLines={2} style={localStyles.eventTitle}>{event.title}</Text>
       {!event.allDay && <Text style={localStyles.eventTime}>{event.start.toFormat('HH:mm')} - {event.end.toFormat('HH:mm')}</Text>}
-        <Text numberOfLines={2} style={localStyles.eventTitle}>Room: {event?.extendedProps?.room}</Text>
+      <Text numberOfLines={2} style={localStyles.eventTitle}>Room: {event?.extendedProps?.room}</Text>
     </TouchableOpacity>
   );
 };
 
-const DayColumn = ({ date, events, isToday, onEventPress, showTimeLabels }: { date: DateTime; events: ProcessedEvent[]; isToday: boolean; onEventPress: (ev: ProcessedEvent) => void; showTimeLabels?: boolean }) => {
+const DayColumn = ({ date, events, isToday, onEventPress, showTimeLabels, navigation }: { date: DateTime; events: ProcessedEvent[]; isToday: boolean; onEventPress: (ev: ProcessedEvent) => void; showTimeLabels?: boolean; navigation: any }) => {
   const allDayEvents = events.filter(ev => ev.allDay);
-  const timedEvents = computeLanes(events.filter(ev => !ev.allDay));
+  const filtered = events.filter(ev => ev.start.hour >= 8 && ev.start.hour <= 20);
+  const timedEvents = computeLanes(filtered.filter(ev => !ev.allDay));
 
   return (
     <View style={[localStyles.dayColumn, isToday && localStyles.todayHighlight]}> 
@@ -106,7 +97,6 @@ const DayColumn = ({ date, events, isToday, onEventPress, showTimeLabels }: { da
         <Text style={localStyles.dayNameCompact}>{date.toFormat('ccc')}</Text>
         <Text style={localStyles.dayNumberCompact}>{date.toFormat('d')}</Text>
       </View>
-      
 
       {allDayEvents.length > 0 ? (
         <View style={localStyles.allDayRow}>
@@ -117,9 +107,7 @@ const DayColumn = ({ date, events, isToday, onEventPress, showTimeLabels }: { da
             </TouchableOpacity>
           ))}
         </View>
-      ) : <View style={localStyles.allDayRow}>
-          
-        </View>}
+      ) : <View style={localStyles.allDayRow} />}
 
       <View style={{flex: 1, position: 'relative'}}>
         {HOURS.map((h) => (
@@ -128,7 +116,7 @@ const DayColumn = ({ date, events, isToday, onEventPress, showTimeLabels }: { da
           </View>
         ))}
         {timedEvents.map(ev => (
-          <PositionedEventCard key={ev.id} event={ev} onPress={() => ev.extendedProps?.type == 'schedule' ? null : onEventPress(ev)} />
+          <PositionedEventCard key={ev.id} event={ev} onPress={() => ev.extendedProps?.type == 'schedule' ? navigation.navigate('Course', {id: ev.extendedProps.course_id}) : onEventPress(ev)} />
         ))}
       </View>
     </View>
@@ -184,7 +172,7 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
         end,
         color: ev.color || '#3b82f6',
         allDay: !!ev.allDay,
-        extendedProps: {room: ev.extendedProps?.room || '', type: ev.extendedProps?.type || ''},
+        extendedProps: {room: ev.extendedProps?.room || '', type: ev.extendedProps?.type || '', course_id: ev.extendedProps?.course_id || '', course_title: ev.extendedProps?.course_title || ''},
         course: ev.extendedProps ? { id: ev.extendedProps.course_id || '', title: ev.extendedProps.course_title || '' } : null,
       } as ProcessedEvent;
     });
@@ -233,14 +221,10 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
           <TouchableOpacity onPress={() => setCurrentWeek(currentWeek.minus({ weeks: 1 }))}>
             <Text style={styles.navButton}>{'←'}</Text>
           </TouchableOpacity>
-
           <View style={styles.weekLabelWrap}>
             <Text style={styles.weekLabel}>{currentWeek.toFormat('MMM d')}</Text>
-            <Text style={styles.weekSubLabel}>
-              {`${weekDates[0].toFormat('d')} — ${weekDates[6].toFormat('d, MMM yyyy')}`}
-            </Text>
+            <Text style={styles.weekSubLabel}>{`${weekDates[0].toFormat('d')} — ${weekDates[6].toFormat('d, MMM yyyy')}`}</Text>
           </View>
-
           <TouchableOpacity onPress={() => setCurrentWeek(currentWeek.plus({ weeks: 1 }))}>
             <Text style={styles.navButton}>{'→'}</Text>
           </TouchableOpacity>
@@ -265,27 +249,23 @@ export const AgendaWeekScreen = ({ navigation, route }: Props) => {
                     setSelectedEvent(ev);
                     setModalVisible(true);
                   }}
+                  navigation={navigation}
                 />
               </View>
             ))}
           </ScrollView>
         </ScrollView>
       )}
-
       <EventDetailModal event={selectedEvent} visible={modalVisible} onClose={() => setModalVisible(false)} />
     </View>
   );
 };
 
 const createStyles = ({ spacing, colors, fontWeights, fontSizes }: any) => ({
-  navButton: {
-  fontSize: fontSizes.lg,
-  color: colors.primary,
-  paddingHorizontal: 10,
-},
+  navButton: { fontSize: fontSizes.lg, color: colors.primary, paddingHorizontal: 10 },
   container: { flex: 1, backgroundColor: colors.background },
-  headerRow: {  padding: spacing[2], paddingHorizontal: spacing[3], backgroundColor: colors.surface, borderBottomColor: colors.divider, borderBottomWidth: 1 },
-  weekControls: {  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
+  headerRow: { padding: spacing[2], paddingHorizontal: spacing[3], backgroundColor: colors.surface, borderBottomColor: colors.divider, borderBottomWidth: 1 },
+  weekControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
   weekLabelWrap: { alignItems: 'center', paddingHorizontal: 8 },
   weekLabel: { fontSize: fontSizes.md, fontWeight: fontWeights.bold, color: colors.text },
   weekSubLabel: { fontSize: fontSizes.xs, color: colors.textSecondary },
@@ -294,14 +274,14 @@ const createStyles = ({ spacing, colors, fontWeights, fontSizes }: any) => ({
 });
 
 const localStyles = StyleSheet.create({
-  dayColumn: {  backgroundColor: '#fff', borderRadius: 0, padding: 6, marginHorizontal: 0, borderRightWidth: 1, borderColor: '#eaeaea', minHeight: 1500 },
+  dayColumn: { backgroundColor: '#fff', borderRadius: 0, padding: 6, marginHorizontal: 0, borderRightWidth: 1, borderColor: '#eaeaea', minHeight: 13 * 60 },
   todayHighlight: { borderWidth: 1, borderColor: '#0ea5e9' },
   dayHeaderCompact: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   dayNameCompact: { fontSize: 12, fontWeight: '700' },
   dayNumberCompact: { fontSize: 16 },
   allDayRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 6, height: 100 },
   allDayEvent: { padding: 11, borderRadius: 6, marginRight: 4, marginBottom: 4 },
-  hourRow: { height: 60,  borderTopWidth: 0.5, borderColor: '#e5e7eb', justifyContent: 'flex-start' },
+  hourRow: { height: 60, borderTopWidth: 0.5, borderColor: '#e5e7eb', justifyContent: 'flex-start' },
   hourLabel: { fontSize: 10, color: '#9ca3af', position: 'absolute', left: -40, top: -6, width: 30, textAlign: 'right' },
   positionedEvent: { position: 'absolute', borderRadius: 8, padding: 6, backgroundColor: '#3b82f6' },
   eventTitle: { color: '#fff', fontSize: 12, fontWeight: '600' },

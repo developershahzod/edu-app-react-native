@@ -62,7 +62,7 @@ export const CourseAssignmentListItem = ({
         onPress={async () => {
           await Linking.openURL(item.url);
         }}
-        title={item.description}
+        title={item.title}
         titleStyle={{
           textDecorationLine:
             item.deletedAt != null ? 'line-through' : undefined,

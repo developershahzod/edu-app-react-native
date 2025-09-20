@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 
 import Pdf from 'react-native-pdf';
-
 import { RefreshControl } from '@lib/ui/components/RefreshControl';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -46,6 +45,7 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
 
   const fileUrl = `https://edu-api.qalb.uz/api/v1/lecture-files/download/${lectureId}`;
   const isPdf = file_type && typeof file_type === 'string' && file_type.toLowerCase().includes('pdf');
+  const localFilePath = `${RNFS.DocumentDirectoryPath}/${lectureId}${file_type}`;
 
   function arrayBufferToBase64(arrayBuffer: ArrayBuffer) {
     let binary = '';
@@ -58,26 +58,10 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
     return global.btoa(binary);
   }
 
-  async function handlePdfOpen() {
-    try {
-      setIsDownloading(true);
-      
-      const localFilePath = `${RNFS.DocumentDirectoryPath}/${lectureId}${file_type}`;
-      // Set PDF source directly to server URL with headers
-      setPdfSource(localFilePath);
-      setShowPdf(true);
-    } catch (error: any) {
-      Alert.alert('PDF Error', error.message || 'Unable to load PDF');
-    } finally {
-      setIsDownloading(false);
-    }
-  }
-
   async function handleFileDownload() {
     try {
       setIsDownloading(true);
 
-      const localFilePath = `${RNFS.DocumentDirectoryPath}/${lectureId}${file_type}`;
       const response = await fetch(fileUrl, {
         method: 'GET',
         headers: {
@@ -95,37 +79,61 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
       await RNFS.writeFile(localFilePath, base64, 'base64');
 
       await FileViewer.open(localFilePath, { showOpenWithDialog: true });
+
+      return localFilePath;
     } catch (error: any) {
-      Alert.alert('Download Error', error.message || 'Unable to open file');
+      Alert.alert('Download Error', error.message || 'Unable to download file');
+      throw error;
     } finally {
       setIsDownloading(false);
     }
   }
 
-  const handleFileAction = () => {
-    if (isPdf) {
-       handleFileDownload();
-      handlePdfOpen();
-    } else {
-      handleFileDownload();
-    }
-  };
+  async function handlePdfOpen() {
+    try {
+      setIsDownloading(true);
+      const exists = await RNFS.exists(localFilePath);
 
-  // Auto-open when page loads
+      if (!exists) {
+        await handleFileDownload();
+      }
+
+      setPdfSource(localFilePath);
+      setShowPdf(true);
+    } catch (error: any) {
+      Alert.alert('PDF Error', error.message || 'Unable to load PDF');
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  async function handleFileAction() {
+    if (isPdf) {
+      await handlePdfOpen();
+    } else {
+      try {
+        const path = await handleFileDownload();
+
+      } catch (err) {
+        console.error('File open error:', err);
+      }
+    }
+  }
+
   useEffect(() => {
     handleFileAction();
   }, []);
 
-  // If PDF is loaded, show PDF viewer
   if (showPdf && pdfSource) {
     return (
       <SafeAreaView style={{ flex: 1 }}>
+        {/* Top Download Button */}
         <View style={{ flexDirection: 'row', padding: 16, backgroundColor: '#f8f9fa' }}>
           <TouchableOpacity
             onPress={handleFileDownload}
             disabled={isDownloading}
             style={{
-              backgroundColor: isDownloading ? '#bbb' : '#28a745',
+              backgroundColor: isDownloading ? '#bbb' : '#03A9F4',
               paddingVertical: 8,
               paddingHorizontal: 16,
               borderRadius: 8,
@@ -134,28 +142,25 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
             {isDownloading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={{ color: '#fff', fontWeight: '600' }}>
-                {t('Download')}
-              </Text>
+              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('Download')}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-      
+        {/* PDF Viewer */}
         <Pdf
-        source={pdfSource}
-        style={{ flex: 1, width: Dimensions.get('window').width }}
-        fitPolicy={0} // 0 = fit width, 1 = fit height
-        onLoadComplete={(numberOfPages) => {
-          console.log(`PDF loaded with ${numberOfPages} pages`);
-        }}
-        onError={(error) => {
-          console.error('PDF Error:', error);
-          Alert.alert('PDF Error', 'Unable to display PDF');
-          setShowPdf(false);
-        }}
-      />
-    
+          source={{ uri: 'file://' + pdfSource }}
+          style={{ flex: 1, width: Dimensions.get('window').width }}
+          fitPolicy={0} // 0 = fit width, 1 = fit height
+          onLoadComplete={(numberOfPages) => {
+            console.log(`PDF loaded with ${numberOfPages} pages`);
+          }}
+          onError={(error) => {
+            console.error('PDF Error:', error);
+            Alert.alert('PDF Error', 'Unable to display PDF');
+            setShowPdf(false);
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -172,7 +177,7 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
             onPress={handleFileAction}
             disabled={isDownloading}
             style={{
-              backgroundColor: isDownloading ? '#bbb' : '#007AFF',
+              backgroundColor: isDownloading ? '#bbb' : '#03A9F4',
               marginTop: 100,
               paddingVertical: 14,
               paddingHorizontal: 30,
@@ -192,9 +197,7 @@ export const CourseVirtualClassroomScreen = ({ route }: Props) => {
 
           {lecture && (
             <View style={{ marginTop: 20, alignItems: 'center' }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>
-                {lecture.title}
-              </Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>{lecture.title}</Text>
               <Text style={{ fontSize: 14, color: '#666' }}>
                 {t('File type')}: {file_type}
               </Text>

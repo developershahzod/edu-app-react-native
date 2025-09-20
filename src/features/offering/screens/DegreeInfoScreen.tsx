@@ -79,49 +79,7 @@ export const DegreeInfoScreen = () => {
             />
 
             {/* User Information Card */}
-            {userData && (
-              <Card padded style={styles.overviewCard}>
-                <Text variant="subHeading" style={styles.sectionTitle}>Student Information</Text>
-                {(userData.name || userData.surname) && (
-                  <Text>
-                    <Text style={styles.label}>Name: </Text>
-                    <Text>{userData.name} {userData.surname}</Text>
-                  </Text>
-                )}
-                {userData.login && (
-                  <Text>
-                    <Text style={styles.label}>Login: </Text>
-                    <Text>{userData.login}</Text>
-                  </Text>
-                )}
-                {userData.email && (
-                  <Text>
-                    <Text style={styles.label}>Email: </Text>
-                    <Text>{userData.email}</Text>
-                  </Text>
-                )}
-                {userData.phone_number && (
-                  <Text>
-                    <Text style={styles.label}>Phone: </Text>
-                    <Text>{userData.phone_number}</Text>
-                  </Text>
-                )}
-                {userData.role_type && (
-                  <Text>
-                    <Text style={styles.label}>Role: </Text>
-                    <Text style={styles.roleText}>{userData.role_type.toUpperCase()}</Text>
-                  </Text>
-                )}
-                {userData.is_active !== undefined && (
-                  <Text>
-                    <Text style={styles.label}>Status: </Text>
-                    <Text style={userData.is_active ? styles.activeStatus : styles.inactiveStatus}>
-                      {userData.is_active ? 'Active' : 'Inactive'}
-                    </Text>
-                  </Text>
-                )}
-              </Card>
-            )}
+          
 
             {/* Study Programs Card */}
             {userData?.study_programs_as_student && userData.study_programs_as_student.length > 0 && (
@@ -137,12 +95,21 @@ export const DegreeInfoScreen = () => {
                       <Text style={styles.label}>Type: </Text>
                       <Text style={styles.programType}>{program.program_type.toUpperCase()}</Text>
                     </Text>
+                     <Text>
+                      <Text style={styles.label}>Location: </Text>
+                      <Text style={styles.programType}>{program.location == null ? '' : program.location}</Text>
+                    </Text>
                     {program.description && (
                       <Text>
                         <Text style={styles.label}>Description: </Text>
                         <Text>{program.description}</Text>
                       </Text>
                     )}
+
+                     <Text>
+                      <Text style={styles.label}>Notes: </Text>
+                      <Text style={styles.programType}>{program.notes == null ? '' : program.notes}</Text>
+                    </Text>
                     {index < userData.study_programs_as_student.length - 1 && (
                       <View style={styles.programSeparator} />
                     )}

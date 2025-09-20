@@ -54,6 +54,7 @@ interface AssignmentSubmission {
   assignment_id: string;
   student_id: string;
   submitted_at: string;
+  status: string;
   student: {
     login: string;
     email: string;
@@ -78,14 +79,12 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
   const queryClient = useQueryClient();
   const { token } = useApiContext();
 
-  // Upload modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [isPickingFiles, setIsPickingFiles] = useState(false);
 
-  // Query to check existing submission
   const submissionQuery = useQuery({
     queryKey: ['assignmentSubmission', selectedAssignmentId],
     queryFn: async (): Promise<AssignmentSubmission | null> => {
@@ -102,7 +101,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
       );
 
       if (response.status === 404) {
-        return null; // No submission found
+        return null;
       }
 
       if (!response.ok) {
@@ -112,14 +111,14 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
       return response.json();
     },
     enabled: !!selectedAssignmentId && showUploadModal,
-    staleTime: 0, // Always refetch to get latest data
+    staleTime: 0,
   });
 
-  // Delete submission mutation
+
   const deleteSubmissionMutation = useMutation({
     mutationFn: async (submissionId: string) => {
       const response = await fetch(
-        `https://edu-api.qalb.uz/api/v1/submissions/${submissionId}`,
+        `https://edu-api.qalb.uz/api/v1/assignments/${submissionId}/submissions`,
         {
           method: 'DELETE',
           headers: {
@@ -156,11 +155,12 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
     },
   });
 
-  // API submission mutation
+
+  
+
   const submitAssignmentMutation = useMutation({
     mutationFn: async (data: SubmissionData & { assignmentId: string }) => {
       const formData = new FormData();
-      
       formData.append('content', data.content);
       
       data.files.forEach((file) => {
@@ -254,7 +254,6 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
       const result = results[0];
       if (!result.name || !result.size || !result.type) return;
       
-      // Check file size (32MB limit)
       if (result.size > 32 * 1000000) {
         Alert.alert(
           'File Size Error',
@@ -300,7 +299,6 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
       return;
     }
 
-    // Check if this is a resubmission
     const existingSubmission = submissionQuery.data;
     if (existingSubmission) {
       Alert.alert(
@@ -343,7 +341,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            deleteSubmissionMutation.mutate(existingSubmission.id);
+            deleteSubmissionMutation.mutate(existingSubmission.assignment_id);
           },
         },
       ]
@@ -429,14 +427,11 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
             <TouchableOpacity onPress={closeUploadModal} style={styles.closeButton}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              Assignment
-            </Text>
+            <Text style={styles.modalTitle}>Assignment</Text>
             <View style={styles.placeholder} />
           </View>
 
           <ScrollView style={styles.modalContent}>
-            {/* Loading state */}
             {isLoadingSubmission && (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#007AFF" />
@@ -448,20 +443,23 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
 
             {!isLoadingSubmission && (
               <>
-                {/* Assignment Details Section */}
+                {/* Assignment Details */}
                 <View style={styles.detailsSection}>
                   <View style={styles.sectionHeaderContainer}>
                     <Text style={styles.sectionHeaderTitle}>ASSIGNMENT DETAILS</Text>
                   </View>
-                  
                   <View style={styles.assignmentDetailsContainer}>
                     <Text style={styles.assignmentTitle}>
                       {currentAssignment?.title || 'Assignment'}
                     </Text>
-                    <Text style={styles.assignmentDescription}>
+                   
+
+                     <Text style={styles.assignmentDescription}>
                       {currentAssignment?.description || 'No description available'}
                     </Text>
-                    
+
+
+                 
                     {currentAssignment?.due_date && (
                       <View style={styles.dueDateContainer}>
                         <Text style={styles.dueDateText}>
@@ -472,14 +470,13 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                   </View>
                 </View>
 
-                {/* Existing Submission Section */}
                 {existingSubmission ? (
                   <View style={styles.submissionSection}>
                     <View style={styles.sectionHeaderContainer}>
                       <Text style={styles.sectionHeaderTitle}>YOUR SUBMISSION</Text>
                     </View>
 
-                    {/* Attached Files */}
+
                     {existingSubmission.file_url && (
                       <View style={styles.attachedFilesContainer}>
                         <Text style={styles.attachedFilesTitle}>Attached Files:</Text>
@@ -493,36 +490,83 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                             </Text>
                           </View>
                         </View>
+
+
+                     {existingSubmission.status === 'ACCEPTED'  && (
+                   <View style={{paddingTop: 16}}>
+                      <Text style={styles.assignmentDescription}>
+                      Feedback: {currentAssignment?.feedback || 'No feedback available'}
+                    </Text>
+                   </View>
+                  )}
+
+                    {existingSubmission.status === 'REJECTED' && (
+                   <View style={{paddingTop: 16}}>
+                      <Text style={styles.assignmentDescription}>
+                      Feedback: {currentAssignment?.feedback || 'No feedback available'}
+                    </Text>
+                   </View>
+                  )}
                       </View>
                     )}
 
-                    {/* Submission Table */}
                     <View style={styles.submissionTable}>
                       <View style={styles.tableHeader}>
                         <Text style={[styles.tableHeaderText, styles.descriptionColumn]}>DESCRIPTION</Text>
-                        <Text style={[styles.tableHeaderText, styles.dateColumn]}>DATE</Text>
                         <Text style={[styles.tableHeaderText, styles.statusColumn]}>STATUS</Text>
-                        <Text style={[styles.tableHeaderText, styles.actionsColumn]}>ACTIONS</Text>
                       </View>
-                      
                       <View style={styles.tableRow}>
                         <Text style={[styles.tableCellText, styles.descriptionColumn]}>
                           {existingSubmission.content || 'No description'}
                         </Text>
-                        <Text style={[styles.tableCellText, styles.dateColumn]}>
-                          {formatDate(existingSubmission.submitted_at)}
+                        
+                        <Text style={[styles.tableCellText, styles.statusColumn]}>
+                          {existingSubmission.status}
                         </Text>
                       </View>
                     </View>
+
+                    {/* Show delete button if status is Reject */}
+                    {existingSubmission.status === 'REJECTED' && (
+                    <TouchableOpacity
+                          style={{
+                            backgroundColor: isDeleting ? "#ff7f7a" : "#ff3b30",
+                            paddingVertical: 12,
+                            paddingHorizontal: 20,
+                            borderRadius: 12,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 4,
+                            elevation: 3,
+                          }}
+                          onPress={handleDeleteSubmission}
+                          disabled={isDeleting}
+                          activeOpacity={0.7}
+                        >
+                          {isDeleting ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontWeight: "600",
+                                fontSize: 16,
+                                letterSpacing: 0.5,
+                              }}
+                            >
+                              Delete
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                    )}
                   </View>
                 ) : (
-                  /* Upload Form - Only show when no existing submission */
                   <>
-                    {/* Content Input Section */}
                     <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>
-                        Assignment Content
-                      </Text>
+                      <Text style={styles.sectionTitle}>Assignment Content</Text>
                       <TextInput
                         style={styles.textInput}
                         multiline
@@ -535,30 +579,7 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                       />
                     </View>
 
-                    {/* File Upload Section */}
                     <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>
-                        Attachments
-                      </Text>
-                      
-                      <TouchableOpacity
-                        style={[
-                          styles.filePickerButton, 
-                          isPickingFiles && styles.filePickerButtonDisabled
-                        ]}
-                        onPress={pickFiles}
-                        disabled={isPickingFiles || isSubmitting}
-                      >
-                        {isPickingFiles ? (
-                          <ActivityIndicator size="small" color="#007AFF" />
-                        ) : (
-                          <Text style={styles.filePickerButtonText}>
-                            Select Files
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-
-                      {/* Selected Files List */}
                       {selectedFiles.length > 0 && (
                         <View style={styles.filesList}>
                           {selectedFiles.map((file, index) => (
@@ -584,7 +605,6 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                       )}
                     </View>
 
-                    {/* Submission Status */}
                     {isSubmitting && (
                       <View style={styles.statusContainer}>
                         <ActivityIndicator size="small" color="#007AFF" />
@@ -597,7 +617,6 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
             )}
           </ScrollView>
 
-          {/* Submit Button - Only show when no existing submission */}
           {!isLoadingSubmission && !existingSubmission && (
             <View style={styles.modalFooter}>
               <CtaButton
@@ -609,6 +628,20 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
                   (!content.trim() && selectedFiles.length === 0)
                 }
               />
+              <TouchableOpacity
+                style={[
+                  styles.filePickerButton, 
+                  isPickingFiles && styles.filePickerButtonDisabled
+                ]}
+                onPress={pickFiles}
+                disabled={isPickingFiles || isSubmitting}
+              >
+                {isPickingFiles ? (
+                  <ActivityIndicator size="small" color="#007AFF" />
+                ) : (
+                  <Text style={styles.filePickerButtonText}>Select Files</Text>
+                )}
+              </TouchableOpacity>
             </View>
           )}
         </SafeAreaView>
@@ -617,10 +650,8 @@ export const CourseAssignmentsScreen = ({ navigation }: Props) => {
   );
 };
 
-// Fallback auth token function
-const getAuthToken = (): string => {
-  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTgxMTM3NTAsInN1YiI6ImY2MjJmOGFiLTc1YWEtNGNmOS1hZmFlLWQzYjUzZjEzNWE3YSIsInR5cGUiOiJhY2Nlc3MifQ.gtf1DDU6Weceer8AxEcjGTtp9YQk_omhXWlYMCRsCJw';
-};
+// Styles remain the same as in your original code
+
 
 const styles = StyleSheet.create({
   modalContainer: {
@@ -889,7 +920,6 @@ const styles = StyleSheet.create({
   filePickerButton: {
     borderWidth: 2,
     borderColor: '#007AFF',
-    borderStyle: 'dashed',
     borderRadius: 8,
     padding: 20,
     alignItems: 'center',

@@ -59,10 +59,10 @@ export const CourseNavigator = ({ route, navigation }: Props) => {
           flexGrow={1}
           style={Platform.select({
             android: { marginLeft: -20 },
-            ios: { marginLeft: -35, marginRight: -10 },
+            ios: { marginLeft: -10, marginRight: -10 },
           })}
         >
-          <CourseIndicator uniqueShortcode={course.uniqueShortcode} />
+          {/* <CourseIndicator uniqueShortcode={course.uniqueShortcode} /> */}
           <Text
             variant="title"
             style={[
